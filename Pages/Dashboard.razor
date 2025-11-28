@@ -1,0 +1,409 @@
+@page "/"
+@using IdleOptimizer.Models
+@using IdleOptimizer.Services
+@using MudBlazor
+@inject ICalculationService CalculationService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h4" Class="mb-4">Idle Game Optimizer</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4">
+                Total Production: <strong>@FormatNumber(CalculationService.GetTotalProduction())</strong>
+            </MudText>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+                       OnClick="OpenAddGeneratorDialog" Class="mb-2 mr-2">
+                Add Generator
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
+                       OnClick="OpenAddResearchDialog" Class="mb-2">
+                Add Research
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
+                       OnClick="RefreshRankings" Class="mb-2 ml-2">
+                Refresh Rankings
+            </MudButton>
+
+            <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
+                      Elevation="2" Class="mt-4">
+                <HeaderContent>
+                    <MudTh>Item Name</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Target</MudTh>
+                    <MudTh Align="Align.Right">Contribute</MudTh>
+                    <MudTh Align="Align.Right">Cost</MudTh>
+                    <MudTh Align="Align.Right">Gain</MudTh>
+                    <MudTh Align="Align.Right">Value Score</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    @{
+                        var editItem = GetOrCreateEditItem(context);
+                        var isEditing = IsEditing(context);
+                    }
+                    <MudTd DataLabel="Item Name">
+                        @if (isEditing)
+                        {
+                            <MudTextField @bind-Value="@editItem.ItemName" Variant="Variant.Outlined" Dense="true" />
+                        }
+                        else
+                        {
+                            @context.ItemName
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Type">
+                        @if (isEditing)
+                        {
+                            <MudSelect T="string" @bind-Value="@editItem.Type" Variant="Variant.Outlined" Dense="true">
+                                <MudSelectItem Value="@("Generator")">Generator</MudSelectItem>
+                                <MudSelectItem Value="@("Research")">Research</MudSelectItem>
+                            </MudSelect>
+                        }
+                        else
+                        {
+                            <MudChip Size="Size.Small" Color="@(context.Type == "Generator" ? Color.Primary : Color.Secondary)">
+                                @context.Type
+                            </MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Target">
+                        @if (context.Type == "Research" && context.SourceItem is Research research)
+                        {
+                            @if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
+                            {
+                                @foreach (var target in research.TargetGenerators)
+                                {
+                                    <div class="mb-1">
+                                        @target <span style="color: #4caf50; font-weight: bold;">(x@((research.MultiplierValue ).ToString("F0")))</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Contribute" Align="Align.Right">
+                        @if (context.Type == "Generator" && context.SourceItem is Generator generator)
+                        {
+                            var contribution = GetGeneratorContribution(generator);
+                            var totalProduction = CalculationService.GetTotalProduction();
+                            var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
+                            <div>
+                                <strong>@FormatNumber(contribution, 2)</strong>
+                            </div>
+                            <div class="text-caption" style="color: #90caf9;">
+                                (@percentage.ToString("F1")%)
+                            </div>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Cost" Align="Align.Right">
+                        @if (isEditing)
+                        {
+                            <div>
+                                <MudNumericField @bind-Value="@editItem.Cost" Variant="Variant.Outlined" Dense="true" />
+                                <div class="text-caption mt-1">Formatted: @FormatNumber(editItem.Cost) (for 10)</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div>
+                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Cost)</MudText>
+                                <MudText Typo="Typo.caption" Class="text-caption">(for 10 units)</MudText>
+                            </div>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Gain" Align="Align.Right">
+                        @FormatNumber(context.Gain, 2)
+                    </MudTd>
+                    <MudTd DataLabel="Value Score" Align="Align.Right">
+                        <MudChip Size="Size.Small" Color="@GetValueScoreColor(context.ValueScore)">
+                            @FormatNumber(context.ValueScore, 4)
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        @if (isEditing)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" 
+                                       StartIcon="@Icons.Material.Filled.ShoppingCart" 
+                                       OnClick="async () => await ApplyPurchase(context)" Class="mr-1">
+                                Apply
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" 
+                                       StartIcon="@Icons.Material.Filled.Save" 
+                                       OnClick="async () => await SaveEdit(context)" Class="mr-1">
+                                Update
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" 
+                                       StartIcon="@Icons.Material.Filled.Refresh" 
+                                       OnClick="() => CancelEdit(context)" Class="mr-1">
+                                Cancel
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
+                                       StartIcon="@Icons.Material.Filled.Delete" 
+                                       OnClick="async () => await DeleteItem(context)">
+                                Delete
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" 
+                                       StartIcon="@Icons.Material.Filled.ShoppingCart" 
+                                       OnClick="async () => await ApplyPurchase(context)" Class="mr-1">
+                                Apply
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" 
+                                       StartIcon="@Icons.Material.Filled.Edit" 
+                                       OnClick="() => StartEdit(context)" Class="mr-1">
+                                Edit
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
+                                       StartIcon="@Icons.Material.Filled.Delete" 
+                                       OnClick="async () => await DeleteItem(context)">
+                                Delete
+                            </MudButton>
+                        }
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private List<UpgradeResult> rankedUpgrades = new();
+    private Dictionary<object, UpgradeResult> editItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CalculationService.InitializeAsync();
+        RefreshRankings();
+    }
+
+    private void RefreshRankings()
+    {
+        rankedUpgrades = CalculationService.GetRankedUpgrades();
+        // Clear edit items for items that no longer exist
+        var currentSourceItems = rankedUpgrades.Select(r => r.SourceItem).Where(s => s != null).ToList();
+        var keysToRemove = editItems.Keys.Where(k => !currentSourceItems.Contains(k)).ToList();
+        foreach (var key in keysToRemove)
+        {
+            editItems.Remove(key);
+        }
+        StateHasChanged();
+    }
+
+    private bool IsEditing(UpgradeResult item)
+    {
+        return item.SourceItem != null && editItems.ContainsKey(item.SourceItem);
+    }
+
+    private void StartEdit(UpgradeResult item)
+    {
+        if (item.SourceItem == null) return;
+
+        if (!editItems.ContainsKey(item.SourceItem))
+        {
+            editItems[item.SourceItem] = new UpgradeResult
+            {
+                ItemName = item.ItemName,
+                Type = item.Type,
+                Cost = item.Cost,
+                Gain = item.Gain,
+                ValueScore = item.ValueScore,
+                TargetGenerators = item.TargetGenerators,
+                SourceItem = item.SourceItem
+            };
+        }
+        StateHasChanged();
+    }
+
+    private UpgradeResult GetOrCreateEditItem(UpgradeResult item)
+    {
+        if (item.SourceItem == null) return item;
+
+        if (!editItems.ContainsKey(item.SourceItem))
+        {
+            editItems[item.SourceItem] = new UpgradeResult
+            {
+                ItemName = item.ItemName,
+                Type = item.Type,
+                Cost = item.Cost,
+                Gain = item.Gain,
+                ValueScore = item.ValueScore,
+                TargetGenerators = item.TargetGenerators,
+                SourceItem = item.SourceItem
+            };
+        }
+        return editItems[item.SourceItem];
+    }
+
+    private async Task ApplyPurchase(UpgradeResult upgrade)
+    {
+        await CalculationService.AppliedPurchaseAsync(upgrade);
+        RefreshRankings();
+        Snackbar.Add($"Applied purchase: {upgrade.ItemName}", Severity.Success);
+    }
+
+    private async Task SaveEdit(UpgradeResult item)
+    {
+        if (item.SourceItem == null || !editItems.ContainsKey(item.SourceItem)) return;
+
+        var editItem = editItems[item.SourceItem];
+
+        if (item.SourceItem is Generator generator)
+        {
+            generator.Name = editItem.ItemName;
+            generator.Cost = editItem.Cost;
+        }
+        else if (item.SourceItem is Research research)
+        {
+            research.Name = editItem.ItemName;
+            research.Cost = editItem.Cost;
+        }
+
+        await CalculationService.SaveStateAsync();
+        RefreshRankings();
+        Snackbar.Add("Item updated successfully", Severity.Success);
+    }
+
+    private void CancelEdit(UpgradeResult item)
+    {
+        if (item.SourceItem != null && editItems.ContainsKey(item.SourceItem))
+        {
+            editItems.Remove(item.SourceItem);
+        }
+        RefreshRankings();
+    }
+
+    private async Task DeleteItem(UpgradeResult item)
+    {
+        if (item.SourceItem is Generator generator)
+        {
+            CalculationService.Generators.Remove(generator);
+        }
+        else if (item.SourceItem is Research research)
+        {
+            CalculationService.Research.Remove(research);
+        }
+
+        await CalculationService.SaveStateAsync();
+        RefreshRankings();
+        Snackbar.Add("Item deleted successfully", Severity.Info);
+    }
+
+    private Color GetValueScoreColor(double valueScore)
+    {
+        if (valueScore > 0.1) return Color.Success;
+        if (valueScore > 0.05) return Color.Warning;
+        return Color.Error;
+    }
+
+    private double GetGeneratorContribution(Generator generator)
+    {
+        double multiplier = 1.0;
+        
+        // Apply all research multipliers that target this generator
+        foreach (var research in CalculationService.Research.Where(r => r.IsPurchased && r.TargetGenerators.Contains(generator.Name)))
+        {
+            multiplier *= research.GetMultiplier();
+        }
+        
+        return generator.GetCurrentProduction() * multiplier;
+    }
+
+    private string FormatNumber(double value, int decimals = 2)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+            return "0";
+
+        double absValue = Math.Abs(value);
+        string sign = value < 0 ? "-" : "";
+        string format = $"F{decimals}";
+
+        if (absValue >= 1_000_000_000_000_000_000) // Quadrillion
+        {
+            return $"{sign}{(absValue / 1_000_000_000_000_000_000).ToString(format)}Q";
+        }
+        else if (absValue >= 1_000_000_000_000_000) // Quadrillion (alternative)
+        {
+            return $"{sign}{(absValue / 1_000_000_000_000_000).ToString(format)}QD";
+        }
+        else if (absValue >= 1_000_000_000_000) // Trillion
+        {
+            return $"{sign}{(absValue / 1_000_000_000_000).ToString(format)}T";
+        }
+        else if (absValue >= 1_000_000_000) // Billion
+        {
+            return $"{sign}{(absValue / 1_000_000_000).ToString(format)}B";
+        }
+        else if (absValue >= 1_000_000) // Million
+        {
+            return $"{sign}{(absValue / 1_000_000).ToString(format)}M";
+        }
+        else if (absValue >= 1_000) // Thousand
+        {
+            return $"{sign}{(absValue / 1_000).ToString(format)}K";
+        }
+        else
+        {
+            return $"{sign}{absValue.ToString(format)}";
+        }
+    }
+
+    private async Task OpenAddGeneratorDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CalculationService"] = CalculationService
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddGeneratorDialog>("Add Generator", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            RefreshRankings();
+        }
+    }
+
+    private async Task OpenAddResearchDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CalculationService"] = CalculationService
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddResearchDialog>("Add Research", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            RefreshRankings();
+        }
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
+

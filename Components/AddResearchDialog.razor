@@ -1,0 +1,64 @@
+@using IdleOptimizer.Models
+@using IdleOptimizer.Services
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add New Research</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+            <MudTextField @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value (e.g., 0.25 for +25%)" 
+                            Variant="Variant.Outlined" Required="true" Min="0.01" />
+            <MudNumericField @bind-Value="@newResearch.Cost" Label="Cost" 
+                            Variant="Variant.Outlined" Required="true" Min="0.01" />
+            <MudTextField @bind-Value="@targetGeneratorsText" Label="Target Generators (comma-separated)" 
+                         Variant="Variant.Outlined" HelperText="Enter generator names separated by commas" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="!success">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+
+    private Research newResearch = new();
+    private string targetGeneratorsText = string.Empty;
+    private MudForm? form;
+    private bool success;
+    private string[] errors = { };
+
+    private async Task Save()
+    {
+        if (form != null)
+        {
+            await form.Validate();
+            if (form.IsValid)
+            {
+                // Parse target generators
+                newResearch.TargetGenerators = targetGeneratorsText
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(t => t.Trim())
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .ToList();
+
+                CalculationService.Research.Add(newResearch);
+                await CalculationService.SaveStateAsync();
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
+
