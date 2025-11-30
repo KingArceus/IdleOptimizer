@@ -2,27 +2,20 @@ using IdleOptimizer.Models;
 
 namespace IdleOptimizer.Services;
 
-public class CalculationService : ICalculationService
+public class CalculationService(ILocalStorageService localStorage) : ICalculationService
 {
-    private readonly ILocalStorageService _localStorage;
-    private double _valueScoreMultiplier = 1.0;
+    private readonly ILocalStorageService _localStorage = localStorage;
     private double _lastTotalProduction = 0;
     
-    public List<Generator> Generators { get; private set; } = new();
-    public List<Research> Research { get; private set; } = new();
-
-    public CalculationService(ILocalStorageService localStorage)
-    {
-        _localStorage = localStorage;
-    }
+    public List<Generator> Generators { get; private set; } = [];
+    public List<Research> Research { get; private set; } = [];
 
     public async Task InitializeAsync()
     {
         await LoadStateAsync();
                 
-        // Initialize total production and calculate multiplier
+        // Initialize total production
         _lastTotalProduction = GetTotalProduction();
-        RecalculateValueScoreMultiplier();
     }
 
     private double CalculateTotalProduction()
@@ -31,15 +24,8 @@ public class CalculationService : ICalculationService
         
         foreach (var generator in Generators)
         {
-            double multiplier = 1.0;
-            
-            // Apply all research multipliers that target this generator
-            foreach (var research in Research.Where(r => r.IsPurchased && r.TargetGenerators.Contains(generator.Name)))
-            {
-                multiplier *= research.GetMultiplier();
-            }
-            
-            total += generator.GetCurrentProduction() * multiplier;
+            // BaseProduction already includes all applied research multipliers
+            total += generator.GetCurrentProduction();
         }
         
         return total;
@@ -49,57 +35,68 @@ public class CalculationService : ICalculationService
     {
         double total = CalculateTotalProduction();
         
-        // Recalculate value score multiplier if total production changed
+        // Update last total production if changed
         if (Math.Abs(total - _lastTotalProduction) > 0.001)
         {
             _lastTotalProduction = total;
-            RecalculateValueScoreMultiplier();
         }
         
         return total;
     }
 
-    private void RecalculateValueScoreMultiplier()
+    private double CalculateCascadeScore(UpgradeResult upgrade, double currentProductionRate, double newProductionRate)
     {
-        // Get all upgrade results without multiplier applied
-        var results = new List<UpgradeResult>();
+        // Get all unpurchased upgrades
+        var unpurchasedUpgrades = new List<(double Cost, double WaitTime)>();
         
+        // Add all generators (they're always available)
         foreach (var generator in Generators)
         {
-            var result = EvaluateGeneratorPurchaseInternal(generator);
-            results.Add(result);
+            double cost = generator.GetPurchaseCost();
+            double waitTime = currentProductionRate > 0 ? cost / currentProductionRate : double.MaxValue;
+            unpurchasedUpgrades.Add((cost, waitTime));
         }
         
+        // Add all research (they're available until purchased and deleted)
         foreach (var research in Research)
         {
-            var result = EvaluateResearchPurchaseInternal(research);
-            results.Add(result);
+            double cost = research.Cost;
+            double waitTime = currentProductionRate > 0 ? cost / currentProductionRate : double.MaxValue;
+            unpurchasedUpgrades.Add((cost, waitTime));
         }
         
-        // Filter out purchased research
-        var validResults = results
-            .Where(r => r.Type != "Research" || !((Research)r.SourceItem!).IsPurchased)
-            .Where(r => r.ValueScore > 0)
-            .ToList();
+        // Calculate Current Total Path Time (sum of wait times for all unpurchased upgrades)
+        double currentTotalPathTime = unpurchasedUpgrades.Sum(u => u.WaitTime > 0 && !double.IsInfinity(u.WaitTime) ? u.WaitTime : 0);
         
-        if (validResults.Count == 0)
+        // Calculate Total Future Time Saved
+        double totalFutureTimeSaved = 0;
+        foreach (var (cost, oldWaitTime) in unpurchasedUpgrades)
         {
-            _valueScoreMultiplier = 1.0;
-            return;
+            if (oldWaitTime > 0 && !double.IsInfinity(oldWaitTime))
+            {
+                double newWaitTime = newProductionRate > 0 ? cost / newProductionRate : double.MaxValue;
+                if (newWaitTime > 0 && !double.IsInfinity(newWaitTime))
+                {
+                    double timeSaved = oldWaitTime - newWaitTime;
+                    if (timeSaved > 0)
+                    {
+                        totalFutureTimeSaved += timeSaved;
+                    }
+                }
+            }
         }
         
-        // Find the highest value score
-        double maxValueScore = validResults.Max(r => r.ValueScore);
+        // Calculate WaitTime for this upgrade
+        double upgradeWaitTime = currentProductionRate > 0 ? upgrade.Cost / currentProductionRate : double.MaxValue;
         
-        // If max value score is less than 1, calculate multiplier to scale it to at least 1
-        if (maxValueScore > 0 && maxValueScore < 1.0)
+        // Calculate Cascade Score
+        double cascadeScore = 0;
+        if (upgradeWaitTime > 0 && !double.IsInfinity(upgradeWaitTime))
         {
-            _valueScoreMultiplier = 1.0 / maxValueScore;
+            cascadeScore = totalFutureTimeSaved / upgradeWaitTime;
         }
-        else
-        {
-            _valueScoreMultiplier = 1.0;
-        }
+        
+        return cascadeScore;
     }
 
     private UpgradeResult EvaluateGeneratorPurchaseInternal(Generator g)
@@ -119,24 +116,37 @@ public class CalculationService : ICalculationService
         double newTotal = 0;
         foreach (var generator in Generators)
         {
-            double multiplier = 1.0;
-            foreach (var research in Research.Where(r => r.IsPurchased && r.TargetGenerators.Contains(generator.Name)))
-            {
-                multiplier *= research.GetMultiplier();
-            }
-            
             if (generator.Name == g.Name)
             {
-                newTotal += tempGenerator.GetCurrentProduction() * multiplier;
+                newTotal += tempGenerator.GetCurrentProduction();
             }
             else
             {
-                newTotal += generator.GetCurrentProduction() * multiplier;
+                newTotal += generator.GetCurrentProduction();
             }
         }
         
         double gain = newTotal - currentTotal;
-        double valueScore = cost > 0 ? gain / cost : 0;
+        
+        // Calculate time-based efficiency metrics
+        double currentProductionPerSecond = currentTotal;
+        double newProductionPerSecond = newTotal;
+        
+        double timeToAfford = currentProductionPerSecond > 0 
+            ? cost / currentProductionPerSecond 
+            : double.MaxValue;
+        
+        double extraProduction = newProductionPerSecond - currentProductionPerSecond;
+        double timeToPayback = extraProduction > 0 
+            ? cost / extraProduction 
+            : double.MaxValue;
+        
+        // Calculate cascade score
+        double cascadeScore = CalculateCascadeScore(
+            new UpgradeResult { Cost = cost, Gain = gain },
+            currentProductionPerSecond,
+            newProductionPerSecond
+        );
         
         return new UpgradeResult
         {
@@ -144,49 +154,54 @@ public class CalculationService : ICalculationService
             Type = "Generator",
             Cost = cost,
             Gain = gain,
-            ValueScore = valueScore,
-            SourceItem = g
+            TimeToAfford = timeToAfford,
+            TimeToPayback = timeToPayback,
+            CascadeScore = cascadeScore,
+            SourceItem = g,
+            AvailableAt = DateTime.Now.AddSeconds(cost / GetTotalProduction())
         };
     }
 
     private UpgradeResult EvaluateResearchPurchaseInternal(Research r)
     {
-        if (r.IsPurchased)
-        {
-            return new UpgradeResult
-            {
-                ItemName = r.Name,
-                Type = "Research",
-                Cost = r.Cost,
-                Gain = 0,
-                ValueScore = 0,
-                TargetGenerators = string.Join(", ", r.TargetGenerators),
-                SourceItem = r
-            };
-        }
-        
         double currentTotal = CalculateTotalProduction();
         
+        // Calculate new total by applying the research multiplier to affected generators' BaseProduction
         double newTotal = 0;
         foreach (var generator in Generators)
         {
-            double multiplier = 1.0;
-            
-            foreach (var existingResearch in Research.Where(res => res.IsPurchased && res.TargetGenerators.Contains(generator.Name)))
-            {
-                multiplier *= existingResearch.GetMultiplier();
-            }
-            
             if (r.TargetGenerators.Contains(generator.Name))
             {
-                multiplier *= r.GetMultiplier();
+                // Apply multiplier to BaseProduction for affected generators
+                double newBaseProduction = generator.BaseProduction * r.GetMultiplier();
+                newTotal += newBaseProduction * generator.Count;
             }
-            
-            newTotal += generator.GetCurrentProduction() * multiplier;
+            else
+            {
+                newTotal += generator.GetCurrentProduction();
+            }
         }
         
         double gain = newTotal - currentTotal;
-        double valueScore = r.Cost > 0 ? gain / r.Cost : 0;
+        
+        // Calculate time-based efficiency metrics
+        double currentProductionPerSecond = currentTotal;
+        double newProductionPerSecond = newTotal;
+        double timeToAfford = currentProductionPerSecond > 0 
+            ? r.Cost / currentProductionPerSecond 
+            : double.MaxValue;
+        
+        double extraProduction = newProductionPerSecond - currentProductionPerSecond;
+        double timeToPayback = extraProduction > 0 
+            ? r.Cost / extraProduction 
+            : double.MaxValue;
+        
+        // Calculate cascade score
+        double cascadeScore = CalculateCascadeScore(
+            new UpgradeResult { Cost = r.Cost, Gain = gain },
+            currentProductionPerSecond,
+            newProductionPerSecond
+        );
         
         return new UpgradeResult
         {
@@ -194,26 +209,23 @@ public class CalculationService : ICalculationService
             Type = "Research",
             Cost = r.Cost,
             Gain = gain,
-            ValueScore = valueScore,
+            TimeToAfford = timeToAfford,
+            TimeToPayback = timeToPayback,
+            CascadeScore = cascadeScore,
             TargetGenerators = string.Join(", ", r.TargetGenerators),
-            SourceItem = r
+            SourceItem = r,
+            AvailableAt = DateTime.Now.AddSeconds(r.Cost / GetTotalProduction())
         };
     }
 
     public UpgradeResult EvaluateGeneratorPurchase(Generator g)
     {
-        var result = EvaluateGeneratorPurchaseInternal(g);
-        // Apply the value score multiplier
-        result.ValueScore *= _valueScoreMultiplier;
-        return result;
+        return EvaluateGeneratorPurchaseInternal(g);
     }
 
     public UpgradeResult EvaluateResearchPurchase(Research r)
     {
-        var result = EvaluateResearchPurchaseInternal(r);
-        // Apply the value score multiplier
-        result.ValueScore *= _valueScoreMultiplier;
-        return result;
+        return EvaluateResearchPurchaseInternal(r);
     }
 
     public List<UpgradeResult> GetRankedUpgrades()
@@ -232,11 +244,8 @@ public class CalculationService : ICalculationService
             results.Add(EvaluateResearchPurchase(research));
         }
         
-        // Filter out purchased research and sort by ValueScore descending
-        return results
-            .Where(r => r.Type != "Research" || !((Research)r.SourceItem!).IsPurchased)
-            .OrderByDescending(r => r.ValueScore)
-            .ToList();
+        // Sort by CascadeScore descending
+        return [.. results.OrderByDescending(r => r.CascadeScore)];
     }
 
     public async Task AppliedPurchaseAsync(UpgradeResult upgrade)
@@ -247,7 +256,18 @@ public class CalculationService : ICalculationService
         }
         else if (upgrade.SourceItem is Research research)
         {
-            research.IsPurchased = true;
+            // Apply research multiplier directly to BaseProduction of affected generators
+            foreach (var generatorName in research.TargetGenerators)
+            {
+                var targetGenerator = Generators.FirstOrDefault(g => g.Name == generatorName);
+                if (targetGenerator != null)
+                {
+                    targetGenerator.BaseProduction *= research.GetMultiplier();
+                }
+            }
+            
+            // Remove the research from the list since it's been applied
+            Research.Remove(research);
         }
         
         await SaveStateAsync();
@@ -265,4 +285,3 @@ public class CalculationService : ICalculationService
         Research = await _localStorage.LoadResearchAsync();
     }
 }
-

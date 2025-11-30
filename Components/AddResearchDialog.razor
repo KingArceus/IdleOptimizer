@@ -9,10 +9,25 @@
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
             <MudTextField @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            
             <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value (e.g., 0.25 for +25%)" 
                             Variant="Variant.Outlined" Required="true" Min="0.01" />
-            <MudNumericField @bind-Value="@newResearch.Cost" Label="Cost" 
-                            Variant="Variant.Outlined" Required="true" Min="0.01" />
+            
+            <MudStack Row="true" Spacing="2">
+                <MudNumericField @bind-Value="@costValue" Label="Cost" 
+                                Variant="Variant.Outlined" Required="true" Min="0.01" Style="flex: 1;" />
+                <MudSelect T="string" @bind-Value="@costAbbr" Label="Abbr" Variant="Variant.Outlined" 
+                          Style="width: 100px;" Dense="true">
+                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                    <MudSelectItem Value="@("K")">K</MudSelectItem>
+                    <MudSelectItem Value="@("M")">M</MudSelectItem>
+                    <MudSelectItem Value="@("B")">B</MudSelectItem>
+                    <MudSelectItem Value="@("T")">T</MudSelectItem>
+                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                </MudSelect>
+            </MudStack>
+            
             <MudTextField @bind-Value="@targetGeneratorsText" Label="Target Generators (comma-separated)" 
                          Variant="Variant.Outlined" HelperText="Enter generator names separated by commas" />
         </MudForm>
@@ -34,6 +49,23 @@
     private MudForm? form;
     private bool success;
     private string[] errors = { };
+    
+    private double costValue = 0;
+    private string? costAbbr = null;
+
+    private double ApplyAbbreviation(double value, string? abbr)
+    {
+        return abbr switch
+        {
+            "K" => value * 1_000,
+            "M" => value * 1_000_000,
+            "B" => value * 1_000_000_000,
+            "T" => value * 1_000_000_000_000,
+            "Qa" => value * 1_000_000_000_000_000,
+            "Qi" => value * 1_000_000_000_000_000_000,
+            _ => value
+        };
+    }
 
     private async Task Save()
     {
@@ -42,6 +74,9 @@
             await form.Validate();
             if (form.IsValid)
             {
+                // Apply abbreviation to cost
+                newResearch.Cost = ApplyAbbreviation(costValue, costAbbr);
+                
                 // Parse target generators
                 newResearch.TargetGenerators = targetGeneratorsText
                     .Split(',', StringSplitOptions.RemoveEmptyEntries)

@@ -37,7 +37,8 @@
                     <MudTh Align="Align.Right">Contribute</MudTh>
                     <MudTh Align="Align.Right">Cost</MudTh>
                     <MudTh Align="Align.Right">Gain</MudTh>
-                    <MudTh Align="Align.Right">Value Score</MudTh>
+                    <MudTh Align="Align.Right">Cascade Score</MudTh>
+                    <MudTh Align="Align.Center">Timer</MudTh>
                     <MudTh>Actions</MudTh>
                 </HeaderContent>
                 <RowTemplate>
@@ -129,10 +130,27 @@
                     <MudTd DataLabel="Gain" Align="Align.Right">
                         @FormatNumber(context.Gain, 2)
                     </MudTd>
-                    <MudTd DataLabel="Value Score" Align="Align.Right">
-                        <MudChip Size="Size.Small" Color="@GetValueScoreColor(context.ValueScore)">
-                            @FormatNumber(context.ValueScore, 4)
+                    <MudTd DataLabel="Cascade Score" Align="Align.Right">
+                        <MudChip Size="Size.Small" Color="@GetCascadeScoreColor(context.CascadeScore)">
+                            @FormatNumber(context.CascadeScore, 4)
                         </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Timer" Align="Align.Center">
+                        @{
+                            var timeToAfford = GetTimeToAfford(context);
+                        }
+                        @if (timeToAfford > 0)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Warning">
+                                @FormatTime(timeToAfford)
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Success">
+                                Ready
+                            </MudChip>
+                        }
                     </MudTd>
                     <MudTd DataLabel="Actions">
                         @if (isEditing)
@@ -189,11 +207,19 @@
 @code {
     private List<UpgradeResult> rankedUpgrades = new();
     private Dictionary<object, UpgradeResult> editItems = new();
+    private Dictionary<string, DateTime> timerStartTimes = new();
+    private System.Threading.Timer? _timer;
+    private double _lastTotalProduction = 0;
+    private const double ProductionPerSecond = 1.0; // Production rate per second
 
     protected override async Task OnInitializedAsync()
     {
         await CalculationService.InitializeAsync();
         RefreshRankings();
+        _lastTotalProduction = CalculationService.GetTotalProduction();
+        
+        // Initialize timer to update every second
+        _timer = new System.Threading.Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
     }
 
     private void RefreshRankings()
@@ -206,6 +232,8 @@
         {
             editItems.Remove(key);
         }
+        // Clear timer cache to force recalculation
+        timerStartTimes.Clear();
         StateHasChanged();
     }
 
@@ -226,7 +254,6 @@
                 Type = item.Type,
                 Cost = item.Cost,
                 Gain = item.Gain,
-                ValueScore = item.ValueScore,
                 TargetGenerators = item.TargetGenerators,
                 SourceItem = item.SourceItem
             };
@@ -246,7 +273,6 @@
                 Type = item.Type,
                 Cost = item.Cost,
                 Gain = item.Gain,
-                ValueScore = item.ValueScore,
                 TargetGenerators = item.TargetGenerators,
                 SourceItem = item.SourceItem
             };
@@ -308,24 +334,18 @@
         Snackbar.Add("Item deleted successfully", Severity.Info);
     }
 
-    private Color GetValueScoreColor(double valueScore)
+    private Color GetCascadeScoreColor(double cascadeScore)
     {
-        if (valueScore > 0.1) return Color.Success;
-        if (valueScore > 0.05) return Color.Warning;
-        return Color.Error;
+        if (cascadeScore > 10) return Color.Success;
+        if (cascadeScore > 1) return Color.Warning;
+        if (cascadeScore > 0) return Color.Info;
+        return Color.Default;
     }
 
     private double GetGeneratorContribution(Generator generator)
     {
-        double multiplier = 1.0;
-        
-        // Apply all research multipliers that target this generator
-        foreach (var research in CalculationService.Research.Where(r => r.IsPurchased && r.TargetGenerators.Contains(generator.Name)))
-        {
-            multiplier *= research.GetMultiplier();
-        }
-        
-        return generator.GetCurrentProduction() * multiplier;
+        // BaseProduction already includes all applied research multipliers
+        return generator.GetCurrentProduction();
     }
 
     private string FormatNumber(double value, int decimals = 2)
@@ -337,13 +357,13 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1_000_000_000_000_000_000) // Quadrillion
+        if (absValue >= 1_000_000_000_000_000_000) // Quintillion
         {
-            return $"{sign}{(absValue / 1_000_000_000_000_000_000).ToString(format)}Q";
+            return $"{sign}{(absValue / 1_000_000_000_000_000_000).ToString(format)}Qi";
         }
-        else if (absValue >= 1_000_000_000_000_000) // Quadrillion (alternative)
+        else if (absValue >= 1_000_000_000_000_000) // Quadrillion
         {
-            return $"{sign}{(absValue / 1_000_000_000_000_000).ToString(format)}QD";
+            return $"{sign}{(absValue / 1_000_000_000_000_000).ToString(format)}Qa";
         }
         else if (absValue >= 1_000_000_000_000) // Trillion
         {
@@ -401,9 +421,85 @@
         }
     }
 
+    private void TimerCallback(object? state)
+    {
+        InvokeAsync(() =>
+        {
+            // Check if total production changed
+            var currentProduction = CalculationService.GetTotalProduction();
+            if (Math.Abs(currentProduction - _lastTotalProduction) > 0.001)
+            {
+                _lastTotalProduction = currentProduction;
+                // Clear timer cache to force recalculation
+                timerStartTimes.Clear();
+            }
+            StateHasChanged();
+        });
+    }
+
+    private int GetTimeToAfford(UpgradeResult item)
+    {
+        var totalProduction = CalculationService.GetTotalProduction();
+        
+        // If no production, return a large number
+        if (totalProduction <= 0)
+        {
+            return int.MaxValue;
+        }
+        
+        // Calculate production per second (assuming total production is per second)
+        // You can adjust ProductionPerSecond multiplier if production is per different time unit
+        var productionPerSecond = totalProduction * ProductionPerSecond;
+        
+        // Calculate time needed to afford this item (in seconds)
+        var timeNeeded = item.Cost / productionPerSecond;
+        
+        // Get the timer key for this item
+        var timerKey = $"{item.Type}_{item.ItemName}";
+        
+        // Check if we need to recalculate (production changed or timer expired)
+        var needsRecalculation = !timerStartTimes.ContainsKey(timerKey);
+        
+        if (!needsRecalculation)
+        {
+            var endTime = timerStartTimes[timerKey];
+            var elapsed = (DateTime.Now - (endTime.AddSeconds(-timeNeeded))).TotalSeconds;
+            var currentTimeNeeded = item.Cost / productionPerSecond;
+            
+            // Recalculate if production changed significantly (more than 1% difference)
+            if (Math.Abs(currentTimeNeeded - timeNeeded) / Math.Max(currentTimeNeeded, 1) > 0.01)
+            {
+                needsRecalculation = true;
+            }
+        }
+        
+        if (needsRecalculation)
+        {
+            // Recalculate based on current production
+            timerStartTimes[timerKey] = item.AvailableAt!.Value;
+        }
+        
+        var remaining = (int)(item.AvailableAt!.Value - DateTime.Now).TotalSeconds;
+        
+        return Math.Max(0, remaining);
+    }
+
+    private string FormatTime(int seconds)
+    {
+        if (seconds < 60)
+        {
+            return $"{seconds}s";
+        }
+        else
+        {
+            int minutes = seconds / 60;
+            int secs = seconds % 60;
+            return $"{minutes}m {secs}s";
+        }
+    }
+
     public void Dispose()
     {
-        // Cleanup if needed
+        _timer?.Dispose();
     }
 }
-
