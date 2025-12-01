@@ -2,9 +2,13 @@
 @using IdleOptimizer.Models
 @using IdleOptimizer.Services
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
 @inject ICalculationService CalculationService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject ILocalStorageService LocalStorageService
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
@@ -27,6 +31,19 @@
                        OnClick="RefreshRankings" Class="mb-2 ml-2">
                 Refresh Rankings
             </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteSweep" 
+                       OnClick="OpenDeleteAllDialog" Class="mb-2 ml-2">
+                Delete All
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Download" 
+                       OnClick="DownloadSaveFiles" Class="mb-2 ml-2">
+                Download Save Files
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Upload" 
+                       OnClick="TriggerFileInput" Class="mb-2 ml-2">
+                Import Save Files
+            </MudButton>
+            <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
 
             <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
                       Elevation="2" Class="mt-4">
@@ -43,8 +60,8 @@
                 </HeaderContent>
                 <RowTemplate>
                     @{
-                        var editItem = GetOrCreateEditItem(context);
                         var isEditing = IsEditing(context);
+                        var editItem = isEditing ? GetOrCreateEditItem(context) : context;
                     }
                     <MudTd DataLabel="Item Name">
                         @if (isEditing)
@@ -96,15 +113,46 @@
                     <MudTd DataLabel="Contribute" Align="Align.Right">
                         @if (context.Type == "Generator" && context.SourceItem is Generator generator)
                         {
-                            var contribution = GetGeneratorContribution(generator);
-                            var totalProduction = CalculationService.GetTotalProduction();
-                            var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
-                            <div>
-                                <strong>@FormatNumber(contribution, 2)</strong>
-                            </div>
-                            <div class="text-caption" style="color: #90caf9;">
-                                (@percentage.ToString("F1")%)
-                            </div>
+                            @if (isEditing)
+                            {
+                                <MudStack Row="true" Spacing="2">
+                                    <MudNumericField @bind-Value="@editItem.BaseProduction"
+                                                     Label="Base Production"
+                                                     Variant="Variant.Outlined"
+                                                     Dense="true"
+                                                     Style="flex: 1;" />
+                                    <MudSelect T="string" @bind-Value="@editBaseProductionAbbr" Label="Abbr" Variant="Variant.Outlined" 
+                                               Style="width: 100px;" Dense="true">
+                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                    </MudSelect>
+                                </MudStack>
+                                <MudNumericField @bind-Value="@editItem.Count"
+                                                 Label="Count"
+                                                 Variant="Variant.Outlined"
+                                                 Dense="true"
+                                                 Style="flex: 1;" />
+                            }
+                            else
+                            {
+                                var contribution = GetGeneratorContribution(generator);
+                                var totalProduction = CalculationService.GetTotalProduction();
+                                var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
+                                <MudStack Row="true" Spacing="2">
+                                    <strong>@FormatNumber(generator.BaseProduction, 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
+                                    <div class="text-caption" style="color: #90caf9;">
+                                        (@percentage.ToString("F1")%)
+                                    </div>
+                                </MudStack>
+                            }
                         }
                         else
                         {
@@ -115,15 +163,34 @@
                         @if (isEditing)
                         {
                             <div>
-                                <MudNumericField @bind-Value="@editItem.Cost" Variant="Variant.Outlined" Dense="true" />
-                                <div class="text-caption mt-1">Formatted: @FormatNumber(editItem.Cost) (for 10)</div>
+                                <MudStack Row="true" Spacing="2">
+                                    <MudNumericField @bind-Value="@editItem.Cost"
+                                                     Label="Cost (for 10 units)"
+                                                     Variant="Variant.Outlined"
+                                                     Dense="true"
+                                                     Style="flex: 1;" />
+                                    <MudSelect T="string" @bind-Value="@editCostAbbr" Label="Abbr" Variant="Variant.Outlined"
+                                               Style="width: 100px;" Dense="true">
+                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                    </MudSelect>
+                                </MudStack>
+                                
+                                <div class="text-caption mt-1">Formatted: @FormatNumber(editItem.Cost)</div>
                             </div>
                         }
                         else
                         {
                             <div>
                                 <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Cost)</MudText>
-                                <MudText Typo="Typo.caption" Class="text-caption">(for 10 units)</MudText>
                             </div>
                         }
                     </MudTd>
@@ -155,11 +222,6 @@
                     <MudTd DataLabel="Actions">
                         @if (isEditing)
                         {
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" 
-                                       StartIcon="@Icons.Material.Filled.ShoppingCart" 
-                                       OnClick="async () => await ApplyPurchase(context)" Class="mr-1">
-                                Apply
-                            </MudButton>
                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" 
                                        StartIcon="@Icons.Material.Filled.Save" 
                                        OnClick="async () => await SaveEdit(context)" Class="mr-1">
@@ -169,11 +231,6 @@
                                        StartIcon="@Icons.Material.Filled.Refresh" 
                                        OnClick="() => CancelEdit(context)" Class="mr-1">
                                 Cancel
-                            </MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
-                                       StartIcon="@Icons.Material.Filled.Delete" 
-                                       OnClick="async () => await DeleteItem(context)">
-                                Delete
                             </MudButton>
                         }
                         else
@@ -211,6 +268,9 @@
     private System.Threading.Timer? _timer;
     private double _lastTotalProduction = 0;
     private const double ProductionPerSecond = 1.0; // Production rate per second
+    private string? editBaseProductionAbbr = null;
+    private string? editCostAbbr = null;
+    private InputFile fileInputElement = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -254,6 +314,8 @@
                 Type = item.Type,
                 Cost = item.Cost,
                 Gain = item.Gain,
+                BaseProduction = item.SourceItem is Generator gen ? gen.BaseProduction : 0,
+                Count = item.SourceItem is Generator generator ? generator.Count : 0,
                 TargetGenerators = item.TargetGenerators,
                 SourceItem = item.SourceItem
             };
@@ -265,23 +327,42 @@
     {
         if (item.SourceItem == null) return item;
 
-        if (!editItems.ContainsKey(item.SourceItem))
-        {
-            editItems[item.SourceItem] = new UpgradeResult
-            {
-                ItemName = item.ItemName,
-                Type = item.Type,
-                Cost = item.Cost,
-                Gain = item.Gain,
-                TargetGenerators = item.TargetGenerators,
-                SourceItem = item.SourceItem
-            };
-        }
         return editItems[item.SourceItem];
     }
 
     private async Task ApplyPurchase(UpgradeResult upgrade)
     {
+        // Check if this is a Generator with CostRatio == 0
+        if (upgrade.SourceItem is Generator generator && generator.CostRatio <= 0)
+        {
+            // Show dialog to get new cost
+            var parameters = new DialogParameters
+            {
+                ["CalculationService"] = CalculationService,
+                ["CurrentCost"] = generator.Cost
+            };
+
+            var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+            var dialog = await DialogService.ShowAsync<NewCostDialog>("Enter New Cost", parameters, options);
+            var result = await dialog.Result;
+
+            if (result.Canceled)
+            {
+                return; // User cancelled, don't apply purchase
+            }
+
+            // Calculate CostRatio from new cost
+            if (result.Data is double newCost && newCost > 0)
+            {
+                generator.CostRatio = newCost / generator.Cost;
+            }
+            else
+            {
+                Snackbar.Add("Invalid cost entered", Severity.Error);
+                return;
+            }
+        }
+
         await CalculationService.AppliedPurchaseAsync(upgrade);
         RefreshRankings();
         Snackbar.Add($"Applied purchase: {upgrade.ItemName}", Severity.Success);
@@ -296,13 +377,20 @@
         if (item.SourceItem is Generator generator)
         {
             generator.Name = editItem.ItemName;
-            generator.Cost = editItem.Cost;
+            var effectiveBase = CalculationService.ApplyAbbreviation(editItem.BaseProduction, editBaseProductionAbbr);
+            var effectiveCost = CalculationService.ApplyAbbreviation(editItem.Cost, editCostAbbr);
+            generator.BaseProduction = effectiveBase;
+            generator.Cost = effectiveCost;
+            generator.Count = editItem.Count;
         }
         else if (item.SourceItem is Research research)
         {
             research.Name = editItem.ItemName;
             research.Cost = editItem.Cost;
         }
+
+        // Exit edit mode for this row
+        editItems.Remove(item.SourceItem);
 
         await CalculationService.SaveStateAsync();
         RefreshRankings();
@@ -357,29 +445,41 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1_000_000_000_000_000_000) // Quintillion
+        if (absValue >= 1e27) // Octillion
         {
-            return $"{sign}{(absValue / 1_000_000_000_000_000_000).ToString(format)}Qi";
+            return $"{sign}{(absValue / 1e27).ToString(format)}Oc";
         }
-        else if (absValue >= 1_000_000_000_000_000) // Quadrillion
+        else if (absValue >= 1e24) // Septillion
         {
-            return $"{sign}{(absValue / 1_000_000_000_000_000).ToString(format)}Qa";
+            return $"{sign}{(absValue / 1e24).ToString(format)}Sp";
         }
-        else if (absValue >= 1_000_000_000_000) // Trillion
+        else if (absValue >= 1e21) // Sextillion
         {
-            return $"{sign}{(absValue / 1_000_000_000_000).ToString(format)}T";
+            return $"{sign}{(absValue / 1e21).ToString(format)}Sx";
         }
-        else if (absValue >= 1_000_000_000) // Billion
+        else if (absValue >= 1e18) // Quintillion
         {
-            return $"{sign}{(absValue / 1_000_000_000).ToString(format)}B";
+            return $"{sign}{(absValue / 1e18).ToString(format)}Qi";
         }
-        else if (absValue >= 1_000_000) // Million
+        else if (absValue >= 1e15) // Quadrillion
         {
-            return $"{sign}{(absValue / 1_000_000).ToString(format)}M";
+            return $"{sign}{(absValue / 1e15).ToString(format)}Qa";
         }
-        else if (absValue >= 1_000) // Thousand
+        else if (absValue >= 1e12) // Trillion
         {
-            return $"{sign}{(absValue / 1_000).ToString(format)}K";
+            return $"{sign}{(absValue / 1e12).ToString(format)}T";
+        }
+        else if (absValue >= 1e9) // Billion
+        {
+            return $"{sign}{(absValue / 1e9).ToString(format)}B";
+        }
+        else if (absValue >= 1e6) // Million
+        {
+            return $"{sign}{(absValue / 1e6).ToString(format)}M";
+        }
+        else if (absValue >= 1e3) // Thousand
+        {
+            return $"{sign}{(absValue / 1e3).ToString(format)}K";
         }
         else
         {
@@ -418,6 +518,101 @@
         if (!result.Canceled)
         {
             RefreshRankings();
+        }
+    }
+
+    private async Task OpenDeleteAllDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DeleteAllConfirmationDialog>("Delete All Items", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CalculationService.ClearAllAsync();
+            RefreshRankings();
+            Snackbar.Add("All items deleted successfully", Severity.Info);
+        }
+    }
+
+    private async Task DownloadSaveFiles()
+    {
+        try
+        {
+            await LocalStorageService.ExportGeneratorsToFileAsync(CalculationService.Generators);
+            await LocalStorageService.ExportResearchToFileAsync(CalculationService.Research);
+            Snackbar.Add("CSV files downloaded successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error downloading files: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task TriggerFileInput()
+    {
+        // Use direct DOM manipulation which is more reliable
+        await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('csvFileInput')?.click();");
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            bool generatorsImported = false;
+            bool researchImported = false;
+
+            foreach (var file in e.GetMultipleFiles())
+            {
+                var fileName = file.Name.ToLower();
+                using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB max
+                using var reader = new StreamReader(stream);
+                var csvContent = await reader.ReadToEndAsync();
+
+                if (fileName.Contains("generator"))
+                {
+                    await LocalStorageService.ImportGeneratorsFromFileAsync(csvContent);
+                    generatorsImported = true;
+                }
+                else if (fileName.Contains("research"))
+                {
+                    await LocalStorageService.ImportResearchFromFileAsync(csvContent);
+                    researchImported = true;
+                }
+            }
+
+            // Reload the state from storage
+            await CalculationService.LoadStateAsync();
+            
+            // Update total production to trigger recalculation
+            _lastTotalProduction = CalculationService.GetTotalProduction();
+            
+            // Refresh rankings to recalculate cascade scores and timers
+            RefreshRankings();
+            
+            // Force state update to ensure UI reflects new data
+            StateHasChanged();
+
+            if (generatorsImported && researchImported)
+            {
+                Snackbar.Add("Both CSV files imported successfully", Severity.Success);
+            }
+            else if (generatorsImported)
+            {
+                Snackbar.Add("Generators CSV file imported successfully", Severity.Success);
+            }
+            else if (researchImported)
+            {
+                Snackbar.Add("Research CSV file imported successfully", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("No valid CSV files found. Please select generators.csv or research.csv", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error importing files: {ex.Message}", Severity.Error);
         }
     }
 
@@ -480,7 +675,6 @@
         }
         
         var remaining = (int)(item.AvailableAt!.Value - DateTime.Now).TotalSeconds;
-        
         return Math.Max(0, remaining);
     }
 

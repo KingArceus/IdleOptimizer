@@ -6,6 +6,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
 {
     private readonly ILocalStorageService _localStorage = localStorage;
     private double _lastTotalProduction = 0;
+    private const double CascadeScoreMultiplier = 10.0;
     
     public List<Generator> Generators { get; private set; } = [];
     public List<Research> Research { get; private set; } = [];
@@ -16,6 +17,23 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 
         // Initialize total production
         _lastTotalProduction = GetTotalProduction();
+    }
+
+    public double ApplyAbbreviation(double value, string? abbr)
+    {
+        return abbr switch
+        {
+            "K"  => value * 1e3,
+            "M"  => value * 1e6,
+            "B"  => value * 1e9,
+            "T"  => value * 1e12,
+            "Qa" => value * 1e15,
+            "Qi" => value * 1e18,
+            "Sx" => value * 1e21,
+            "Sp" => value * 1e24,
+            "Oc" => value * 1e27,
+            _    => value
+        };
     }
 
     private double CalculateTotalProduction()
@@ -89,21 +107,21 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         // Calculate WaitTime for this upgrade
         double upgradeWaitTime = currentProductionRate > 0 ? upgrade.Cost / currentProductionRate : double.MaxValue;
         
-        // Calculate Cascade Score
+        // Calculate Cascade Score and apply multiplier to keep values in a readable range
         double cascadeScore = 0;
         if (upgradeWaitTime > 0 && !double.IsInfinity(upgradeWaitTime))
         {
-            cascadeScore = totalFutureTimeSaved / upgradeWaitTime;
+            cascadeScore = totalFutureTimeSaved / upgradeWaitTime * CascadeScoreMultiplier;
         }
         
         return cascadeScore;
     }
 
-    private UpgradeResult EvaluateGeneratorPurchaseInternal(Generator g)
+    private UpgradeResult EvaluateGeneratorPurchase(Generator g)
     {
         double currentTotal = CalculateTotalProduction();
         double cost = g.GetPurchaseCost();
-        int purchaseAmount = 10;
+        int purchaseAmount = 1;
         
         var tempGenerator = new Generator
         {
@@ -148,6 +166,17 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             newProductionPerSecond
         );
         
+        // Safely calculate AvailableAt, handling cases where production is zero or very small
+        double totalProduction = GetTotalProduction();
+        double secondsToAdd = totalProduction > 0 ? cost / totalProduction : double.MaxValue;
+        
+        // Clamp to a safe maximum value (approximately 100 years in seconds)
+        const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
+        if (double.IsInfinity(secondsToAdd) || double.IsNaN(secondsToAdd) || secondsToAdd > maxSafeSeconds)
+        {
+            secondsToAdd = maxSafeSeconds;
+        }
+        
         return new UpgradeResult
         {
             ItemName = g.Name,
@@ -158,11 +187,11 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             TimeToPayback = timeToPayback,
             CascadeScore = cascadeScore,
             SourceItem = g,
-            AvailableAt = DateTime.Now.AddSeconds(cost / GetTotalProduction())
+            AvailableAt = DateTime.Now.AddSeconds(secondsToAdd)
         };
     }
 
-    private UpgradeResult EvaluateResearchPurchaseInternal(Research r)
+    private UpgradeResult EvaluateResearchPurchase(Research r)
     {
         double currentTotal = CalculateTotalProduction();
         
@@ -203,6 +232,17 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             newProductionPerSecond
         );
         
+        // Safely calculate AvailableAt, handling cases where production is zero or very small
+        double totalProduction = GetTotalProduction();
+        double secondsToAdd = totalProduction > 0 ? r.Cost / totalProduction : double.MaxValue;
+        
+        // Clamp to a safe maximum value (approximately 100 years in seconds)
+        const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
+        if (double.IsInfinity(secondsToAdd) || double.IsNaN(secondsToAdd) || secondsToAdd > maxSafeSeconds)
+        {
+            secondsToAdd = maxSafeSeconds;
+        }
+        
         return new UpgradeResult
         {
             ItemName = r.Name,
@@ -214,18 +254,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             CascadeScore = cascadeScore,
             TargetGenerators = string.Join(", ", r.TargetGenerators),
             SourceItem = r,
-            AvailableAt = DateTime.Now.AddSeconds(r.Cost / GetTotalProduction())
+            AvailableAt = DateTime.Now.AddSeconds(secondsToAdd)
         };
-    }
-
-    public UpgradeResult EvaluateGeneratorPurchase(Generator g)
-    {
-        return EvaluateGeneratorPurchaseInternal(g);
-    }
-
-    public UpgradeResult EvaluateResearchPurchase(Research r)
-    {
-        return EvaluateResearchPurchaseInternal(r);
     }
 
     public List<UpgradeResult> GetRankedUpgrades()
@@ -252,7 +282,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     {
         if (upgrade.SourceItem is Generator generator)
         {
-            generator.Count += 10; // Purchase 10 units at a time
+            generator.Count += 1; // Purchase 1 unit at a time
+            generator.Cost *= generator.CostRatio;
         }
         else if (upgrade.SourceItem is Research research)
         {
@@ -283,5 +314,12 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     {
         Generators = await _localStorage.LoadGeneratorsAsync();
         Research = await _localStorage.LoadResearchAsync();
+    }
+
+    public async Task ClearAllAsync()
+    {
+        Generators.Clear();
+        Research.Clear();
+        await _localStorage.ClearAllAsync();
     }
 }

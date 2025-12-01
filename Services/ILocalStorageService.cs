@@ -9,5 +9,9 @@ public interface ILocalStorageService
     Task<List<Generator>> LoadGeneratorsAsync();
     Task<List<Research>> LoadResearchAsync();
     Task ClearAllAsync();
+    Task ExportGeneratorsToFileAsync(List<Generator> generators);
+    Task ExportResearchToFileAsync(List<Research> research);
+    Task ImportGeneratorsFromFileAsync(string csvContent);
+    Task ImportResearchFromFileAsync(string csvContent);
 }
 

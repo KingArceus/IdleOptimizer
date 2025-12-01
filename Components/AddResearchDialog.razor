@@ -25,6 +25,9 @@
                     <MudSelectItem Value="@("T")">T</MudSelectItem>
                     <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
                     <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
                 </MudSelect>
             </MudStack>
             
@@ -53,20 +56,6 @@
     private double costValue = 0;
     private string? costAbbr = null;
 
-    private double ApplyAbbreviation(double value, string? abbr)
-    {
-        return abbr switch
-        {
-            "K" => value * 1_000,
-            "M" => value * 1_000_000,
-            "B" => value * 1_000_000_000,
-            "T" => value * 1_000_000_000_000,
-            "Qa" => value * 1_000_000_000_000_000,
-            "Qi" => value * 1_000_000_000_000_000_000,
-            _ => value
-        };
-    }
-
     private async Task Save()
     {
         if (form != null)
@@ -75,7 +64,7 @@
             if (form.IsValid)
             {
                 // Apply abbreviation to cost
-                newResearch.Cost = ApplyAbbreviation(costValue, costAbbr);
+                newResearch.Cost = CalculationService.ApplyAbbreviation(costValue, costAbbr);
                 
                 // Parse target generators
                 newResearch.TargetGenerators = targetGeneratorsText

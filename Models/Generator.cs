@@ -5,7 +5,8 @@ public class Generator
     public string Name { get; set; } = string.Empty;
     public double BaseProduction { get; set; }
     public int Count { get; set; }
-    public double Cost { get; set; } // Cost for purchasing 10 units
+    public double Cost { get; set; } // Cost for purchasing 1 unit
+    public double CostRatio { get; set; } // Cost increase ratio
 
     public double GetCurrentProduction()
     {
@@ -14,7 +15,7 @@ public class Generator
 
     public double GetPurchaseCost()
     {
-        return Cost; // Cost is always for 10 units
+        return Cost;
     }
 }
 

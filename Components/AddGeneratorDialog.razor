@@ -22,6 +22,9 @@
                     <MudSelectItem Value="@("T")">T</MudSelectItem>
                     <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
                     <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
                 </MudSelect>
             </MudStack>
             
@@ -29,9 +32,9 @@
                             Variant="Variant.Outlined" Required="true" Min="0" />
             
             <MudStack Row="true" Spacing="2">
-                <MudNumericField @bind-Value="@costValue" Label="Cost (for 10 units)" 
+                <MudNumericField @bind-Value="@costValue" Label="Base Cost" 
                                 Variant="Variant.Outlined" Required="true" Min="0.01" 
-                                HelperText="This is the cost to purchase 10 units" Style="flex: 1;" />
+                                HelperText="This is the cost of the last purchase" Style="flex: 1;" />
                 <MudSelect T="string" @bind-Value="@costAbbr" Label="Abbr" Variant="Variant.Outlined" 
                           Style="width: 100px;" Dense="true">
                     <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
@@ -41,6 +44,9 @@
                     <MudSelectItem Value="@("T")">T</MudSelectItem>
                     <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
                     <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
                 </MudSelect>
             </MudStack>
         </MudForm>
@@ -66,20 +72,8 @@
     private string? baseProductionAbbr = null;
     private double costValue = 0;
     private string? costAbbr = null;
-
-    private double ApplyAbbreviation(double value, string? abbr)
-    {
-        return abbr switch
-        {
-            "K" => value * 1_000,
-            "M" => value * 1_000_000,
-            "B" => value * 1_000_000_000,
-            "T" => value * 1_000_000_000_000,
-            "Qa" => value * 1_000_000_000_000_000,
-            "Qi" => value * 1_000_000_000_000_000_000,
-            _ => value
-        };
-    }
+    private double costStepValue = 0;
+    private string? costStepAbbr = null;
 
     private async Task Save()
     {
@@ -89,8 +83,9 @@
             if (form.IsValid)
             {
                 // Apply abbreviations to values
-                newGenerator.BaseProduction = ApplyAbbreviation(baseProductionValue, baseProductionAbbr);
-                newGenerator.Cost = ApplyAbbreviation(costValue, costAbbr);
+                newGenerator.BaseProduction = CalculationService.ApplyAbbreviation(baseProductionValue, baseProductionAbbr);
+                newGenerator.Cost = CalculationService.ApplyAbbreviation(costValue, costAbbr);
+                newGenerator.CostRatio = CalculationService.ApplyAbbreviation(costStepValue, costStepAbbr) / newGenerator.Cost;
                 
                 CalculationService.Generators.Add(newGenerator);
                 await CalculationService.SaveStateAsync();

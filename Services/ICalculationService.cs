@@ -9,11 +9,11 @@ public interface ICalculationService
     
     Task InitializeAsync();
     Task AppliedPurchaseAsync(UpgradeResult upgrade);
-    UpgradeResult EvaluateGeneratorPurchase(Generator g);
-    UpgradeResult EvaluateResearchPurchase(Research r);
     List<UpgradeResult> GetRankedUpgrades();
     double GetTotalProduction();
+    double ApplyAbbreviation(double value, string? abbr);
     Task SaveStateAsync();
     Task LoadStateAsync();
+    Task ClearAllAsync();
 }
 
