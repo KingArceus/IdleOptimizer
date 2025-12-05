@@ -1,0 +1,67 @@
+@using IdleOptimizer.Models
+@using IdleOptimizer.Services
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add New Resource</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+            <MudTextField @bind-Value="@newResource.Name" Label="Resource Name" Variant="Variant.Outlined" Required="true" />
+            
+            <MudText Typo="Typo.body2" Class="mt-2" Style="color: #90caf9;">
+                Total Production will be automatically calculated from generators that produce this resource.
+            </MudText>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="!success">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+
+    private Resource newResource = new();
+    private MudForm? form;
+    private bool success;
+    private string[] errors = { };
+
+    private async Task Save()
+    {
+        if (form != null)
+        {
+            await form.Validate();
+            if (form.IsValid)
+            {
+                if (string.IsNullOrWhiteSpace(newResource.Name))
+                {
+                    return;
+                }
+
+                // Check if resource already exists
+                var existingResource = CalculationService.GetResource(newResource.Name);
+                if (existingResource != null)
+                {
+                    MudDialog.Cancel();
+                    return;
+                }
+
+                CalculationService.AddResource(newResource);
+                await CalculationService.SaveStateAsync();
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
+
