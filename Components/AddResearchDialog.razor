@@ -13,26 +13,54 @@
             <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value (e.g., 0.25 for +25%)" 
                             Variant="Variant.Outlined" Required="true" Min="0.01" />
             
-            <MudStack Row="true" Spacing="2">
-                <MudNumericField @bind-Value="@costValue" Label="Cost" 
-                                Variant="Variant.Outlined" Required="true" Min="0.01" Style="flex: 1;" />
-                <MudSelect T="string" @bind-Value="@costAbbr" Label="Abbr" Variant="Variant.Outlined" 
-                          Style="width: 100px;" Dense="true">
-                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                    <MudSelectItem Value="@("K")">K</MudSelectItem>
-                    <MudSelectItem Value="@("M")">M</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("T")">T</MudSelectItem>
-                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                </MudSelect>
-            </MudStack>
+            <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                <MudExpansionPanel Text="Resource Costs (Click to add multiple resource costs)">
+                    <MudText Typo="Typo.body2" Class="mb-2">Add resources required to purchase this research.</MudText>
+                    @foreach (var cost in resourceCosts)
+                    {
+                        <MudCard Class="mb-2">
+                            <MudCardContent>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                             Variant="Variant.Outlined" Style="flex: 1;">
+                                        <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                        @foreach (var res in CalculationService.Resources)
+                                        {
+                                            <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                   Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                    <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                             Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                    </MudSelect>
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                             OnClick="() => RemoveResourceCost(cost)">
+                                        Remove
+                                    </MudButton>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                             StartIcon="@Icons.Material.Filled.Add" OnClick="AddResourceCost" Class="mb-2">
+                        Add Resource Cost
+                    </MudButton>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
             
             <MudTextField @bind-Value="@targetGeneratorsText" Label="Target Generators (comma-separated)" 
-                         Variant="Variant.Outlined" HelperText="Enter generator names separated by commas" />
+                         Variant="Variant.Outlined" HelperText="Enter generator names separated by commas" Class="mt-2" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -52,9 +80,25 @@
     private MudForm? form;
     private bool success;
     private string[] errors = { };
-    
-    private double costValue = 0;
-    private string? costAbbr = null;
+
+    private class ResourceCostEntry
+    {
+        public string? ResourceName { get; set; }
+        public double Value { get; set; } = 0;
+        public string? Abbr { get; set; }
+    }
+
+    private List<ResourceCostEntry> resourceCosts = new();
+
+    private void AddResourceCost()
+    {
+        resourceCosts.Add(new ResourceCostEntry { ResourceName = null, Value = 0 });
+    }
+
+    private void RemoveResourceCost(ResourceCostEntry cost)
+    {
+        resourceCosts.Remove(cost);
+    }
 
     private async Task Save()
     {
@@ -63,8 +107,19 @@
             await form.Validate();
             if (form.IsValid)
             {
-                // Apply abbreviation to cost
-                newResearch.Cost = CalculationService.ApplyAbbreviation(costValue, costAbbr);
+                // Handle resource costs
+                newResearch.ResourceCosts = new Dictionary<string, double>();
+                foreach (var cost in resourceCosts)
+                {
+                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
+                    {
+                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        newResearch.ResourceCosts[cost.ResourceName] = costValue;
+                    }
+                }
+                newResearch.Cost = newResearch.ResourceCosts.Count > 0 
+                    ? newResearch.ResourceCosts.Values.Sum() 
+                    : 0;
                 
                 // Parse target generators
                 newResearch.TargetGenerators = targetGeneratorsText

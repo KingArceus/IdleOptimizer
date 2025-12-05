@@ -10,45 +10,100 @@
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
             <MudTextField @bind-Value="@newGenerator.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
-            <MudStack Row="true" Spacing="2">
-                <MudNumericField @bind-Value="@baseProductionValue" Label="Base Production" 
-                                Variant="Variant.Outlined" Required="true" Min="0.01" Style="flex: 1;" />
-                <MudSelect T="string" @bind-Value="@baseProductionAbbr" Label="Abbr" Variant="Variant.Outlined" 
-                          Style="width: 100px;" Dense="true">
-                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                    <MudSelectItem Value="@("K")">K</MudSelectItem>
-                    <MudSelectItem Value="@("M")">M</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("T")">T</MudSelectItem>
-                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                </MudSelect>
-            </MudStack>
+            <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                <MudExpansionPanel Text="Resources (Click to add multiple resources)">
+                    <MudText Typo="Typo.body2" Class="mb-2">Add resources this generator produces.</MudText>
+                    @foreach (var resource in resources)
+                    {
+                        <MudCard Class="mb-2">
+                            <MudCardContent>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
+                                             Variant="Variant.Outlined" Style="flex: 1;">
+                                        <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                        @foreach (var res in CalculationService.Resources)
+                                        {
+                                            <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudNumericField @bind-Value="@resource.Value" Label="Production" 
+                                                   Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                    <MudSelect T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
+                                             Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                    </MudSelect>
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                             OnClick="() => RemoveResource(resource)">
+                                        Remove
+                                    </MudButton>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                             StartIcon="@Icons.Material.Filled.Add" OnClick="AddResource" Class="mb-2">
+                        Add Resource
+                    </MudButton>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
             
             <MudNumericField @bind-Value="@newGenerator.Count" Label="Initial Count" 
-                            Variant="Variant.Outlined" Required="true" Min="0" />
+                            Variant="Variant.Outlined" Required="true" Min="0" Class="mt-2" />
             
-            <MudStack Row="true" Spacing="2">
-                <MudNumericField @bind-Value="@costValue" Label="Base Cost" 
-                                Variant="Variant.Outlined" Required="true" Min="0.01" 
-                                HelperText="This is the cost of the last purchase" Style="flex: 1;" />
-                <MudSelect T="string" @bind-Value="@costAbbr" Label="Abbr" Variant="Variant.Outlined" 
-                          Style="width: 100px;" Dense="true">
-                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                    <MudSelectItem Value="@("K")">K</MudSelectItem>
-                    <MudSelectItem Value="@("M")">M</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("T")">T</MudSelectItem>
-                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                </MudSelect>
-            </MudStack>
+            <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                <MudExpansionPanel Text="Resource Costs (Click to add multiple resource costs)">
+                    <MudText Typo="Typo.body2" Class="mb-2">Add resources required to purchase this generator.</MudText>
+                    @foreach (var cost in resourceCosts)
+                    {
+                        <MudCard Class="mb-2">
+                            <MudCardContent>
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                             Variant="Variant.Outlined" Style="flex: 1;">
+                                        <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                        @foreach (var res in CalculationService.Resources)
+                                        {
+                                            <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                   Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                    <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                             Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                    </MudSelect>
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                             OnClick="() => RemoveResourceCost(cost)">
+                                        Remove
+                                    </MudButton>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                             StartIcon="@Icons.Material.Filled.Add" OnClick="AddResourceCost" Class="mb-2">
+                        Add Resource Cost
+                    </MudButton>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -67,13 +122,43 @@
     private MudForm? form;
     private bool success;
     private string[] errors = { };
-    
-    private double baseProductionValue = 0;
-    private string? baseProductionAbbr = null;
-    private double costValue = 0;
-    private string? costAbbr = null;
-    private double costStepValue = 0;
-    private string? costStepAbbr = null;
+
+    private class ResourceEntry
+    {
+        public string? ResourceName { get; set; }
+        public double Value { get; set; } = 0;
+        public string? Abbr { get; set; }
+    }
+
+    private class ResourceCostEntry
+    {
+        public string? ResourceName { get; set; }
+        public double Value { get; set; } = 0;
+        public string? Abbr { get; set; }
+    }
+
+    private List<ResourceEntry> resources = new();
+    private List<ResourceCostEntry> resourceCosts = new();
+
+    private void AddResource()
+    {
+        resources.Add(new ResourceEntry { ResourceName = null, Value = 0 });
+    }
+
+    private void RemoveResource(ResourceEntry resource)
+    {
+        resources.Remove(resource);
+    }
+
+    private void AddResourceCost()
+    {
+        resourceCosts.Add(new ResourceCostEntry { ResourceName = null, Value = 0 });
+    }
+
+    private void RemoveResourceCost(ResourceCostEntry cost)
+    {
+        resourceCosts.Remove(cost);
+    }
 
     private async Task Save()
     {
@@ -82,12 +167,42 @@
             await form.Validate();
             if (form.IsValid)
             {
-                // Apply abbreviations to values
-                newGenerator.BaseProduction = CalculationService.ApplyAbbreviation(baseProductionValue, baseProductionAbbr);
-                newGenerator.Cost = CalculationService.ApplyAbbreviation(costValue, costAbbr);
-                newGenerator.CostRatio = CalculationService.ApplyAbbreviation(costStepValue, costStepAbbr) / newGenerator.Cost;
+                // Handle resource costs
+                newGenerator.ResourceCosts = new Dictionary<string, double>();
+                foreach (var cost in resourceCosts)
+                {
+                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
+                    {
+                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        newGenerator.ResourceCosts[cost.ResourceName] = costValue;
+                    }
+                }
+                newGenerator.Cost = newGenerator.ResourceCosts.Count > 0 
+                    ? newGenerator.ResourceCosts.Values.Sum() 
+                    : 0;
+                
+                // Handle resources for production
+                newGenerator.Resources = new Dictionary<string, double>();
+                foreach (var resource in resources)
+                {
+                    if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
+                    {
+                        double productionValue = CalculationService.ApplyAbbreviation(resource.Value, resource.Abbr);
+                        newGenerator.Resources[resource.ResourceName] = productionValue;
+                    }
+                }
+                newGenerator.BaseProduction = newGenerator.Resources.Count > 0 
+                    ? newGenerator.Resources.Values.Sum() 
+                    : 0;
+                
+                // Set default CostRatio if not set
+                if (newGenerator.CostRatio == 0 && newGenerator.Cost > 0)
+                {
+                    newGenerator.CostRatio = 1.15; // Default 15% increase
+                }
                 
                 CalculationService.Generators.Add(newGenerator);
+                CalculationService.UpdateResourceTotalProduction();
                 await CalculationService.SaveStateAsync();
                 MudDialog.Close(DialogResult.Ok(true));
             }

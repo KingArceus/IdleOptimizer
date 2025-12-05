@@ -18,14 +18,83 @@
             <MudText Typo="Typo.body1" Class="mb-4">
                 Total Production: <strong>@FormatNumber(CalculationService.GetTotalProduction())</strong>
             </MudText>
+            @{
+                var productionByResource = CalculationService.GetTotalProductionByResource();
+            }
+            <MudCard Class="mb-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2">Resources</MudText>
+                    @if (CalculationService.Resources.Count > 0)
+                    {
+                        <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
+                                  Elevation="1" Class="mt-2">
+                            <HeaderContent>
+                                <MudTh>Resource Name</MudTh>
+                                <MudTh Align="Align.Right">Total Production</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Resource Name">
+                                    <strong>@context.Name</strong>
+                                </MudTd>
+                                <MudTd DataLabel="Total Production" Align="Align.Right">
+                                    @{
+                                        CalculationService.UpdateResourceTotalProduction();
+                                        var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
+                                    }
+                                    <MudText Typo="Typo.body1">@FormatNumber(resourceProduction, 2)</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Actions">
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
+                                             StartIcon="@Icons.Material.Filled.Delete" 
+                                             OnClick="async () => await DeleteResource(context)">
+                                        Delete
+                                    </MudButton>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            @if (productionByResource.Count > 1 || (productionByResource.Count == 1 && !productionByResource.ContainsKey("Default")))
+            {
+                <MudCard Class="mb-4">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Class="mb-2">Production by Resource</MudText>
+                        <MudStack Spacing="1">
+                            @foreach (var resource in productionByResource.OrderByDescending(r => r.Value))
+                            {
+                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body1" Style="min-width: 150px;"><strong>@resource.Key:</strong></MudText>
+                                    <MudText Typo="Typo.body1">@FormatNumber(resource.Value, 2)</MudText>
+                                    @{
+                                        var totalProd = CalculationService.GetTotalProduction();
+                                        var percentage = totalProd > 0 ? (resource.Value / totalProd) * 100 : 0;
+                                    }
+                                    <MudChip Size="Size.Small" Color="Color.Info">@percentage.ToString("F1")%</MudChip>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            }
 
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
                        OnClick="OpenAddGeneratorDialog" Class="mb-2 mr-2">
                 Add Generator
             </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
-                       OnClick="OpenAddResearchDialog" Class="mb-2">
+                       OnClick="OpenAddResearchDialog" Class="mb-2 mr-2">
                 Add Research
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" 
+                       OnClick="OpenAddResourceDialog" Class="mb-2">
+                Add Resource
             </MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
                        OnClick="RefreshRankings" Class="mb-2 ml-2">
@@ -115,42 +184,91 @@
                         {
                             @if (isEditing)
                             {
-                                <MudStack Row="true" Spacing="2">
-                                    <MudNumericField @bind-Value="@editItem.BaseProduction"
-                                                     Label="Base Production"
+                                <MudStack Spacing="2">
+                                    <MudExpansionPanels MultiExpansion="true">
+                                        <MudExpansionPanel Text="Resources (Click to add multiple resources)">
+                                            <MudText Typo="Typo.body2" Class="mb-2">Add resources this generator produces.</MudText>
+                                            @{
+                                                var editResources = GetOrCreateEditResources(generator);
+                                            }
+                                            @foreach (var resource in editResources)
+                                            {
+                                                <MudCard Class="mb-2">
+                                                    <MudCardContent>
+                                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                            <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
+                                                                     Variant="Variant.Outlined" Style="flex: 1;">
+                                                                <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                                                @foreach (var res in CalculationService.Resources)
+                                                                {
+                                                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                                                }
+                                                            </MudSelect>
+                                                            <MudNumericField @bind-Value="@resource.Value" Label="Production" 
+                                                                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                                            <MudSelect T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
+                                                                     Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                                                <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                                                <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                                                <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                                                <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                                            </MudSelect>
+                                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                                                     OnClick="() => RemoveEditResource(generator, resource)">
+                                                                Remove
+                                                            </MudButton>
+                                                        </MudStack>
+                                                    </MudCardContent>
+                                                </MudCard>
+                                            }
+                                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                                                     StartIcon="@Icons.Material.Filled.Add" OnClick="() => AddEditResource(generator)" Class="mb-2">
+                                                Add Resource
+                                            </MudButton>
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                    <MudNumericField @bind-Value="@editItem.Count"
+                                                     Label="Count"
                                                      Variant="Variant.Outlined"
                                                      Dense="true"
                                                      Style="flex: 1;" />
-                                    <MudSelect T="string" @bind-Value="@editBaseProductionAbbr" Label="Abbr" Variant="Variant.Outlined" 
-                                               Style="width: 100px;" Dense="true">
-                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                    </MudSelect>
                                 </MudStack>
-                                <MudNumericField @bind-Value="@editItem.Count"
-                                                 Label="Count"
-                                                 Variant="Variant.Outlined"
-                                                 Dense="true"
-                                                 Style="flex: 1;" />
                             }
                             else
                             {
                                 var contribution = GetGeneratorContribution(generator);
                                 var totalProduction = CalculationService.GetTotalProduction();
                                 var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
-                                <MudStack Row="true" Spacing="2">
-                                    <strong>@FormatNumber(generator.BaseProduction, 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
-                                    <div class="text-caption" style="color: #90caf9;">
-                                        (@percentage.ToString("F1")%)
-                                    </div>
+                                var resources = generator.GetCurrentProductionByResource();
+                                
+                                <MudStack Spacing="1">
+                                    @if (resources.Count > 1 || (resources.Count == 1 && !resources.ContainsKey("Default")))
+                                    {
+                                        @foreach (var resource in resources)
+                                        {
+                                            <div>
+                                                <strong>@resource.Key:</strong> @FormatNumber(resource.Value, 2)
+                                            </div>
+                                        }
+                                        <div class="text-caption" style="color: #90caf9;">
+                                            Total: @FormatNumber(contribution, 2) (@percentage.ToString("F1")%)
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudStack Row="true" Spacing="2">
+                                            <strong>@FormatNumber(generator.BaseProduction, 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
+                                            <div class="text-caption" style="color: #90caf9;">
+                                                (@percentage.ToString("F1")%)
+                                            </div>
+                                        </MudStack>
+                                    }
                                 </MudStack>
                             }
                         }
@@ -160,12 +278,118 @@
                         }
                     </MudTd>
                     <MudTd DataLabel="Cost" Align="Align.Right">
-                        @if (isEditing)
+                        @if (isEditing && context.Type == "Generator" && context.SourceItem is Generator generator)
+                        {
+                            <MudStack Spacing="2">
+                                <MudExpansionPanels MultiExpansion="true">
+                                    <MudExpansionPanel Text="Resource Costs (Click to add multiple resource costs)">
+                                        <MudText Typo="Typo.body2" Class="mb-2">Add resources required to purchase this generator.</MudText>
+                                        @{
+                                            var editCostResources = GetOrCreateEditCostResources(generator);
+                                        }
+                                        @foreach (var cost in editCostResources)
+                                        {
+                                            <MudCard Class="mb-2">
+                                                <MudCardContent>
+                                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                                                 Variant="Variant.Outlined" Style="flex: 1;">
+                                                            <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                                            @foreach (var res in CalculationService.Resources)
+                                                            {
+                                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                                            }
+                                                        </MudSelect>
+                                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                                        </MudSelect>
+                                                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                                                 OnClick="() => RemoveEditCostResource(generator, cost)">
+                                                            Remove
+                                                        </MudButton>
+                                                    </MudStack>
+                                                </MudCardContent>
+                                            </MudCard>
+                                        }
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                                                 StartIcon="@Icons.Material.Filled.Add" OnClick="() => AddEditCostResource(generator)" Class="mb-2">
+                                            Add Resource Cost
+                                        </MudButton>
+                                    </MudExpansionPanel>
+                                </MudExpansionPanels>
+                            </MudStack>
+                        }
+                        else if (isEditing && context.Type == "Research" && context.SourceItem is Research research)
+                        {
+                            <MudStack Spacing="2">
+                                <MudExpansionPanels MultiExpansion="true">
+                                    <MudExpansionPanel Text="Resource Costs (Click to add multiple resource costs)">
+                                        <MudText Typo="Typo.body2" Class="mb-2">Add resources required to purchase this research.</MudText>
+                                        @{
+                                            var editResearchCostResources = GetOrCreateEditCostResources(research);
+                                        }
+                                        @foreach (var cost in editResearchCostResources)
+                                        {
+                                            <MudCard Class="mb-2">
+                                                <MudCardContent>
+                                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                                                 Variant="Variant.Outlined" Style="flex: 1;">
+                                                            <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                                            @foreach (var res in CalculationService.Resources)
+                                                            {
+                                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                                            }
+                                                        </MudSelect>
+                                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                                        </MudSelect>
+                                                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
+                                                                 OnClick="() => RemoveEditCostResource(research, cost)">
+                                                            Remove
+                                                        </MudButton>
+                                                    </MudStack>
+                                                </MudCardContent>
+                                            </MudCard>
+                                        }
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
+                                                 StartIcon="@Icons.Material.Filled.Add" OnClick="() => AddEditCostResource(research)" Class="mb-2">
+                                            Add Resource Cost
+                                        </MudButton>
+                                    </MudExpansionPanel>
+                                </MudExpansionPanels>
+                            </MudStack>
+                        }
+                        else if (isEditing)
                         {
                             <div>
                                 <MudStack Row="true" Spacing="2">
                                     <MudNumericField @bind-Value="@editItem.Cost"
-                                                     Label="Cost (for 10 units)"
+                                                     Label="Cost"
                                                      Variant="Variant.Outlined"
                                                      Dense="true"
                                                      Style="flex: 1;" />
@@ -189,13 +413,49 @@
                         }
                         else
                         {
-                            <div>
-                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Cost)</MudText>
-                            </div>
+                            @if (context.ResourceCosts != null && context.ResourceCosts.Count > 0)
+                            {
+                                <MudStack Spacing="1">
+                                    @foreach (var cost in context.ResourceCosts)
+                                    {
+                                        <div>
+                                            <strong>@cost.Key:</strong> @FormatNumber(cost.Value, 2)
+                                        </div>
+                                    }
+                                    <div class="text-caption" style="color: #90caf9;">
+                                        Total: @FormatNumber(context.Cost, 2)
+                                    </div>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <div>
+                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Cost)</MudText>
+                                </div>
+                            }
                         }
                     </MudTd>
                     <MudTd DataLabel="Gain" Align="Align.Right">
-                        @FormatNumber(context.Gain, 2)
+                        @if (context.GainByResource != null && context.GainByResource.Count > 0)
+                        {
+                            <MudStack Spacing="1">
+                                @foreach (var gain in context.GainByResource)
+                                {
+                                    <div>
+                                        <strong>@gain.Key:</strong> @FormatNumber(gain.Value, 2)
+                                    </div>
+                                }
+                                <div class="text-caption" style="color: #90caf9;">
+                                    Total: @FormatNumber(context.Gain, 2)
+                                </div>
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <div>
+                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Gain, 2)</MudText>
+                            </div>
+                        }
                     </MudTd>
                     <MudTd DataLabel="Cascade Score" Align="Align.Right">
                         <MudChip Size="Size.Small" Color="@GetCascadeScoreColor(context.CascadeScore)">
@@ -206,7 +466,13 @@
                         @{
                             var timeToAfford = GetTimeToAfford(context);
                         }
-                        @if (timeToAfford > 0)
+                        @if (timeToAfford == int.MaxValue)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Error">
+                                Can't Afford
+                            </MudChip>
+                        }
+                        else if (timeToAfford > 0)
                         {
                             <MudChip Size="Size.Small" Color="Color.Warning">
                                 @FormatTime(timeToAfford)
@@ -272,6 +538,24 @@
     private string? editCostAbbr = null;
     private InputFile fileInputElement = default!;
 
+    private class ResourceEntry
+    {
+        public string? ResourceName { get; set; }
+        public double Value { get; set; } = 0;
+        public string? Abbr { get; set; }
+    }
+
+    private class ResourceCostEntry
+    {
+        public string? ResourceName { get; set; }
+        public double Value { get; set; } = 0;
+        public string? Abbr { get; set; }
+    }
+
+    private Dictionary<Generator, List<ResourceEntry>> editResources = new();
+    private Dictionary<Generator, List<ResourceCostEntry>> editCostResources = new();
+    private Dictionary<Research, List<ResourceCostEntry>> editResearchCostResources = new();
+
     protected override async Task OnInitializedAsync()
     {
         await CalculationService.InitializeAsync();
@@ -291,6 +575,24 @@
         foreach (var key in keysToRemove)
         {
             editItems.Remove(key);
+            if (key is Generator generator)
+            {
+                if (editResources.ContainsKey(generator))
+                {
+                    editResources.Remove(generator);
+                }
+                if (editCostResources.ContainsKey(generator))
+                {
+                    editCostResources.Remove(generator);
+                }
+            }
+            else if (key is Research research)
+            {
+                if (editResearchCostResources.ContainsKey(research))
+                {
+                    editResearchCostResources.Remove(research);
+                }
+            }
         }
         // Clear timer cache to force recalculation
         timerStartTimes.Clear();
@@ -313,12 +615,231 @@
                 ItemName = item.ItemName,
                 Type = item.Type,
                 Cost = item.Cost,
+                ResourceCosts = item.ResourceCosts != null ? new Dictionary<string, double>(item.ResourceCosts) : null,
                 Gain = item.Gain,
                 BaseProduction = item.SourceItem is Generator gen ? gen.BaseProduction : 0,
-                Count = item.SourceItem is Generator generator ? generator.Count : 0,
+                Count = item.SourceItem is Generator gen2 ? gen2.Count : 0,
                 TargetGenerators = item.TargetGenerators,
                 SourceItem = item.SourceItem
             };
+
+            // Initialize resource entries for generators
+            if (item.SourceItem is Generator generator)
+            {
+                if (!editResources.ContainsKey(generator))
+                {
+                    var resourceEntries = new List<ResourceEntry>();
+                    if (generator.Resources != null && generator.Resources.Count > 0)
+                    {
+                        // Convert generator Resources to ResourceEntry list
+                        foreach (var resource in generator.Resources)
+                        {
+                            double value = resource.Value;
+                            string? abbr = null;
+                            double baseValue = value;
+                            
+                            // Determine abbreviation from value and calculate base value
+                            if (value >= 1e27 && value % 1e27 < 1e24)
+                            {
+                                abbr = "Oc";
+                                baseValue = value / 1e27;
+                            }
+                            else if (value >= 1e24 && value % 1e24 < 1e21)
+                            {
+                                abbr = "Sp";
+                                baseValue = value / 1e24;
+                            }
+                            else if (value >= 1e21 && value % 1e21 < 1e18)
+                            {
+                                abbr = "Sx";
+                                baseValue = value / 1e21;
+                            }
+                            else if (value >= 1e18 && value % 1e18 < 1e15)
+                            {
+                                abbr = "Qi";
+                                baseValue = value / 1e18;
+                            }
+                            else if (value >= 1e15 && value % 1e15 < 1e12)
+                            {
+                                abbr = "Qa";
+                                baseValue = value / 1e15;
+                            }
+                            else if (value >= 1e12 && value % 1e12 < 1e9)
+                            {
+                                abbr = "T";
+                                baseValue = value / 1e12;
+                            }
+                            else if (value >= 1e9 && value % 1e9 < 1e6)
+                            {
+                                abbr = "B";
+                                baseValue = value / 1e9;
+                            }
+                            else if (value >= 1e6 && value % 1e6 < 1e3)
+                            {
+                                abbr = "M";
+                                baseValue = value / 1e6;
+                            }
+                            else if (value >= 1e3 && value % 1e3 < 1)
+                            {
+                                abbr = "K";
+                                baseValue = value / 1e3;
+                            }
+
+                            resourceEntries.Add(new ResourceEntry
+                            {
+                                ResourceName = resource.Key,
+                                Value = baseValue,
+                                Abbr = abbr
+                            });
+                        }
+                    }
+                    editResources[generator] = resourceEntries;
+                }
+
+                // Initialize resource cost entries for generators
+                if (!editCostResources.ContainsKey(generator))
+                {
+                    var costEntries = new List<ResourceCostEntry>();
+                    if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+                    {
+                        // Convert generator ResourceCosts to ResourceCostEntry list
+                        foreach (var cost in generator.ResourceCosts)
+                        {
+                            double value = cost.Value;
+                            string? abbr = null;
+                            double baseValue = value;
+                            
+                            // Determine abbreviation from value and calculate base value
+                            if (value >= 1e27 && value % 1e27 < 1e24)
+                            {
+                                abbr = "Oc";
+                                baseValue = value / 1e27;
+                            }
+                            else if (value >= 1e24 && value % 1e24 < 1e21)
+                            {
+                                abbr = "Sp";
+                                baseValue = value / 1e24;
+                            }
+                            else if (value >= 1e21 && value % 1e21 < 1e18)
+                            {
+                                abbr = "Sx";
+                                baseValue = value / 1e21;
+                            }
+                            else if (value >= 1e18 && value % 1e18 < 1e15)
+                            {
+                                abbr = "Qi";
+                                baseValue = value / 1e18;
+                            }
+                            else if (value >= 1e15 && value % 1e15 < 1e12)
+                            {
+                                abbr = "Qa";
+                                baseValue = value / 1e15;
+                            }
+                            else if (value >= 1e12 && value % 1e12 < 1e9)
+                            {
+                                abbr = "T";
+                                baseValue = value / 1e12;
+                            }
+                            else if (value >= 1e9 && value % 1e9 < 1e6)
+                            {
+                                abbr = "B";
+                                baseValue = value / 1e9;
+                            }
+                            else if (value >= 1e6 && value % 1e6 < 1e3)
+                            {
+                                abbr = "M";
+                                baseValue = value / 1e6;
+                            }
+                            else if (value >= 1e3 && value % 1e3 < 1)
+                            {
+                                abbr = "K";
+                                baseValue = value / 1e3;
+                            }
+
+                            costEntries.Add(new ResourceCostEntry
+                            {
+                                ResourceName = cost.Key,
+                                Value = baseValue,
+                                Abbr = abbr
+                            });
+                        }
+                    }
+                    editCostResources[generator] = costEntries;
+                }
+            }
+            else if (item.SourceItem is Research research)
+            {
+                // Initialize resource cost entries for research
+                if (!editResearchCostResources.ContainsKey(research))
+                {
+                    var costEntries = new List<ResourceCostEntry>();
+                    if (research.ResourceCosts != null && research.ResourceCosts.Count > 0)
+                    {
+                        // Convert research ResourceCosts to ResourceCostEntry list
+                        foreach (var cost in research.ResourceCosts)
+                        {
+                            double value = cost.Value;
+                            string? abbr = null;
+                            double baseValue = value;
+                            
+                            // Determine abbreviation from value and calculate base value
+                            if (value >= 1e27 && value % 1e27 < 1e24)
+                            {
+                                abbr = "Oc";
+                                baseValue = value / 1e27;
+                            }
+                            else if (value >= 1e24 && value % 1e24 < 1e21)
+                            {
+                                abbr = "Sp";
+                                baseValue = value / 1e24;
+                            }
+                            else if (value >= 1e21 && value % 1e21 < 1e18)
+                            {
+                                abbr = "Sx";
+                                baseValue = value / 1e21;
+                            }
+                            else if (value >= 1e18 && value % 1e18 < 1e15)
+                            {
+                                abbr = "Qi";
+                                baseValue = value / 1e18;
+                            }
+                            else if (value >= 1e15 && value % 1e15 < 1e12)
+                            {
+                                abbr = "Qa";
+                                baseValue = value / 1e15;
+                            }
+                            else if (value >= 1e12 && value % 1e12 < 1e9)
+                            {
+                                abbr = "T";
+                                baseValue = value / 1e12;
+                            }
+                            else if (value >= 1e9 && value % 1e9 < 1e6)
+                            {
+                                abbr = "B";
+                                baseValue = value / 1e9;
+                            }
+                            else if (value >= 1e6 && value % 1e6 < 1e3)
+                            {
+                                abbr = "M";
+                                baseValue = value / 1e6;
+                            }
+                            else if (value >= 1e3 && value % 1e3 < 1)
+                            {
+                                abbr = "K";
+                                baseValue = value / 1e3;
+                            }
+
+                            costEntries.Add(new ResourceCostEntry
+                            {
+                                ResourceName = cost.Key,
+                                Value = baseValue,
+                                Abbr = abbr
+                            });
+                        }
+                    }
+                    editResearchCostResources[research] = costEntries;
+                }
+            }
         }
         StateHasChanged();
     }
@@ -328,6 +849,75 @@
         if (item.SourceItem == null) return item;
 
         return editItems[item.SourceItem];
+    }
+
+    private List<ResourceEntry> GetOrCreateEditResources(Generator generator)
+    {
+        if (!editResources.ContainsKey(generator))
+        {
+            editResources[generator] = new List<ResourceEntry>();
+        }
+        return editResources[generator];
+    }
+
+    private void AddEditResource(Generator generator)
+    {
+        var resources = GetOrCreateEditResources(generator);
+        resources.Add(new ResourceEntry { ResourceName = null, Value = 0 });
+        StateHasChanged();
+    }
+
+    private void RemoveEditResource(Generator generator, ResourceEntry resource)
+    {
+        var resources = GetOrCreateEditResources(generator);
+        resources.Remove(resource);
+        StateHasChanged();
+    }
+
+    private List<ResourceCostEntry> GetOrCreateEditCostResources(Generator generator)
+    {
+        if (!editCostResources.ContainsKey(generator))
+        {
+            editCostResources[generator] = new List<ResourceCostEntry>();
+        }
+        return editCostResources[generator];
+    }
+
+    private void AddEditCostResource(Generator generator)
+    {
+        var costResources = GetOrCreateEditCostResources(generator);
+        costResources.Add(new ResourceCostEntry { ResourceName = null, Value = 0 });
+        StateHasChanged();
+    }
+
+    private void RemoveEditCostResource(Generator generator, ResourceCostEntry cost)
+    {
+        var costResources = GetOrCreateEditCostResources(generator);
+        costResources.Remove(cost);
+        StateHasChanged();
+    }
+
+    private List<ResourceCostEntry> GetOrCreateEditCostResources(Research research)
+    {
+        if (!editResearchCostResources.ContainsKey(research))
+        {
+            editResearchCostResources[research] = new List<ResourceCostEntry>();
+        }
+        return editResearchCostResources[research];
+    }
+
+    private void AddEditCostResource(Research research)
+    {
+        var costResources = GetOrCreateEditCostResources(research);
+        costResources.Add(new ResourceCostEntry { ResourceName = null, Value = 0 });
+        StateHasChanged();
+    }
+
+    private void RemoveEditCostResource(Research research, ResourceCostEntry cost)
+    {
+        var costResources = GetOrCreateEditCostResources(research);
+        costResources.Remove(cost);
+        StateHasChanged();
     }
 
     private async Task ApplyPurchase(UpgradeResult upgrade)
@@ -377,21 +967,90 @@
         if (item.SourceItem is Generator generator)
         {
             generator.Name = editItem.ItemName;
-            var effectiveBase = CalculationService.ApplyAbbreviation(editItem.BaseProduction, editBaseProductionAbbr);
-            var effectiveCost = CalculationService.ApplyAbbreviation(editItem.Cost, editCostAbbr);
-            generator.BaseProduction = effectiveBase;
-            generator.Cost = effectiveCost;
             generator.Count = editItem.Count;
+
+            // Handle resource costs
+            if (editCostResources.ContainsKey(generator) && editCostResources[generator].Count > 0)
+            {
+                generator.ResourceCosts = new Dictionary<string, double>();
+                foreach (var cost in editCostResources[generator])
+                {
+                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
+                    {
+                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        generator.ResourceCosts[cost.ResourceName] = costValue;
+                    }
+                }
+                generator.Cost = generator.ResourceCosts.Count > 0 
+                    ? generator.ResourceCosts.Values.Sum() 
+                    : 0;
+            }
+            else
+            {
+                generator.ResourceCosts.Clear();
+                generator.Cost = 0;
+            }
+
+            // Handle resources for production
+            if (editResources.ContainsKey(generator) && editResources[generator].Count > 0)
+            {
+                generator.Resources = new Dictionary<string, double>();
+                foreach (var resource in editResources[generator])
+                {
+                    if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
+                    {
+                        double productionValue = CalculationService.ApplyAbbreviation(resource.Value, resource.Abbr);
+                        generator.Resources[resource.ResourceName] = productionValue;
+                    }
+                }
+                generator.BaseProduction = generator.Resources.Count > 0 
+                    ? generator.Resources.Values.Sum() 
+                    : 0;
+            }
+            else
+            {
+                generator.Resources.Clear();
+                generator.BaseProduction = 0;
+            }
+
+            // Remove from edit resources and cost resources
+            editResources.Remove(generator);
+            editCostResources.Remove(generator);
         }
         else if (item.SourceItem is Research research)
         {
             research.Name = editItem.ItemName;
-            research.Cost = editItem.Cost;
+
+            // Handle resource costs
+            if (editResearchCostResources.ContainsKey(research) && editResearchCostResources[research].Count > 0)
+            {
+                research.ResourceCosts = new Dictionary<string, double>();
+                foreach (var cost in editResearchCostResources[research])
+                {
+                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
+                    {
+                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        research.ResourceCosts[cost.ResourceName] = costValue;
+                    }
+                }
+                research.Cost = research.ResourceCosts.Count > 0 
+                    ? research.ResourceCosts.Values.Sum() 
+                    : 0;
+            }
+            else
+            {
+                research.ResourceCosts.Clear();
+                research.Cost = 0;
+            }
+
+            // Remove from edit research cost resources
+            editResearchCostResources.Remove(research);
         }
 
         // Exit edit mode for this row
         editItems.Remove(item.SourceItem);
 
+        CalculationService.UpdateResourceTotalProduction();
         await CalculationService.SaveStateAsync();
         RefreshRankings();
         Snackbar.Add("Item updated successfully", Severity.Success);
@@ -399,9 +1058,30 @@
 
     private void CancelEdit(UpgradeResult item)
     {
-        if (item.SourceItem != null && editItems.ContainsKey(item.SourceItem))
+        if (item.SourceItem != null)
         {
-            editItems.Remove(item.SourceItem);
+            if (editItems.ContainsKey(item.SourceItem))
+            {
+                editItems.Remove(item.SourceItem);
+            }
+            if (item.SourceItem is Generator generator)
+            {
+                if (editResources.ContainsKey(generator))
+                {
+                    editResources.Remove(generator);
+                }
+                if (editCostResources.ContainsKey(generator))
+                {
+                    editCostResources.Remove(generator);
+                }
+            }
+            else if (item.SourceItem is Research research)
+            {
+                if (editResearchCostResources.ContainsKey(research))
+                {
+                    editResearchCostResources.Remove(research);
+                }
+            }
         }
         RefreshRankings();
     }
@@ -521,6 +1201,34 @@
         }
     }
 
+    private async Task OpenAddResourceDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["CalculationService"] = CalculationService
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddResourceDialog>("Add Resource", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            CalculationService.UpdateResourceTotalProduction();
+            RefreshRankings();
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteResource(Resource resource)
+    {
+        CalculationService.RemoveResource(resource);
+        CalculationService.UpdateResourceTotalProduction();
+        await CalculationService.SaveStateAsync();
+        RefreshRankings();
+        Snackbar.Add("Resource deleted successfully", Severity.Info);
+    }
+
     private async Task OpenDeleteAllDialog()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -634,20 +1342,59 @@
 
     private int GetTimeToAfford(UpgradeResult item)
     {
-        var totalProduction = CalculationService.GetTotalProduction();
+        double timeNeeded = double.MaxValue;
         
-        // If no production, return a large number
-        if (totalProduction <= 0)
+        // Check if item has resource costs
+        if (item.ResourceCosts != null && item.ResourceCosts.Count > 0)
         {
-            return int.MaxValue;
+            // Multiple resource costs - find the bottleneck (longest time to afford)
+            var productionByResource = CalculationService.GetTotalProductionByResource();
+            double maxTime = 0;
+            
+            foreach (var cost in item.ResourceCosts)
+            {
+                if (productionByResource.ContainsKey(cost.Key))
+                {
+                    double resourceProduction = productionByResource[cost.Key];
+                    if (resourceProduction > 0)
+                    {
+                        double resourceTime = cost.Value / resourceProduction;
+                        if (resourceTime > maxTime)
+                        {
+                            maxTime = resourceTime;
+                        }
+                    }
+                    else
+                    {
+                        // Resource not being produced - can't afford
+                        return int.MaxValue;
+                    }
+                }
+                else
+                {
+                    // Resource not being produced - can't afford
+                    return int.MaxValue;
+                }
+            }
+            
+            timeNeeded = maxTime;
         }
-        
-        // Calculate production per second (assuming total production is per second)
-        // You can adjust ProductionPerSecond multiplier if production is per different time unit
-        var productionPerSecond = totalProduction * ProductionPerSecond;
-        
-        // Calculate time needed to afford this item (in seconds)
-        var timeNeeded = item.Cost / productionPerSecond;
+        else
+        {
+            var totalProduction = CalculationService.GetTotalProduction();
+            
+            // If no production, return a large number
+            if (totalProduction <= 0)
+            {
+                return int.MaxValue;
+            }
+            
+            // Calculate production per second (assuming total production is per second)
+            var productionPerSecond = totalProduction * ProductionPerSecond;
+            
+            // Calculate time needed to afford this item (in seconds)
+            timeNeeded = item.Cost / productionPerSecond;
+        }
         
         // Get the timer key for this item
         var timerKey = $"{item.Type}_{item.ItemName}";
@@ -659,10 +1406,58 @@
         {
             var endTime = timerStartTimes[timerKey];
             var elapsed = (DateTime.Now - (endTime.AddSeconds(-timeNeeded))).TotalSeconds;
-            var currentTimeNeeded = item.Cost / productionPerSecond;
+            
+            // Recalculate time needed with current production
+            double currentTimeNeeded = double.MaxValue;
+            if (item.ResourceCosts != null && item.ResourceCosts.Count > 0)
+            {
+                var productionByResource = CalculationService.GetTotalProductionByResource();
+                double maxTime = 0;
+                
+                foreach (var cost in item.ResourceCosts)
+                {
+                    if (productionByResource.ContainsKey(cost.Key))
+                    {
+                        double resourceProduction = productionByResource[cost.Key];
+                        if (resourceProduction > 0)
+                        {
+                            double resourceTime = cost.Value / resourceProduction;
+                            if (resourceTime > maxTime)
+                            {
+                                maxTime = resourceTime;
+                            }
+                        }
+                        else
+                        {
+                            currentTimeNeeded = double.MaxValue;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        currentTimeNeeded = double.MaxValue;
+                        break;
+                    }
+                }
+                
+                if (currentTimeNeeded != double.MaxValue)
+                {
+                    currentTimeNeeded = maxTime;
+                }
+            }
+            else
+            {
+                var totalProduction = CalculationService.GetTotalProduction();
+                if (totalProduction > 0)
+                {
+                    var productionPerSecond = totalProduction * ProductionPerSecond;
+                    currentTimeNeeded = item.Cost / productionPerSecond;
+                }
+            }
             
             // Recalculate if production changed significantly (more than 1% difference)
-            if (Math.Abs(currentTimeNeeded - timeNeeded) / Math.Max(currentTimeNeeded, 1) > 0.01)
+            if (currentTimeNeeded != double.MaxValue && timeNeeded != double.MaxValue &&
+                Math.Abs(currentTimeNeeded - timeNeeded) / Math.Max(currentTimeNeeded, 1) > 0.01)
             {
                 needsRecalculation = true;
             }
@@ -671,10 +1466,18 @@
         if (needsRecalculation)
         {
             // Recalculate based on current production
-            timerStartTimes[timerKey] = item.AvailableAt!.Value;
+            if (item.AvailableAt.HasValue)
+            {
+                timerStartTimes[timerKey] = item.AvailableAt.Value;
+            }
         }
         
-        var remaining = (int)(item.AvailableAt!.Value - DateTime.Now).TotalSeconds;
+        if (!item.AvailableAt.HasValue)
+        {
+            return int.MaxValue; // Can't afford
+        }
+        
+        var remaining = (int)(item.AvailableAt.Value - DateTime.Now).TotalSeconds;
         return Math.Max(0, remaining);
     }
 

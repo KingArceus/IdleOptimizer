@@ -9,9 +9,11 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
 {
     private const string GeneratorsFileName = "generators.csv";
     private const string ResearchFileName = "research.csv";
+    private const string ResourcesFileName = "resources.csv";
     private readonly IJSRuntime _jsRuntime = jsRuntime;
     private List<Generator> _cachedGenerators = [];
     private List<Research> _cachedResearch = [];
+    private List<Resource> _cachedResources = [];
 
     public async Task SaveGeneratorsAsync(List<Generator> generators)
     {
@@ -79,14 +81,49 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
         }
     }
 
+    public async Task SaveResourcesAsync(List<Resource> resources)
+    {
+        try
+        {
+            _cachedResources = resources;
+            var csv = ConvertResourcesToCsv(resources);
+            await SaveCsvFile(ResourcesFileName, csv);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving resources: {ex.Message}");
+        }
+    }
+
+    public async Task<List<Resource>> LoadResourcesAsync()
+    {
+        try
+        {
+            var csv = await LoadCsvFile(ResourcesFileName);
+            if (string.IsNullOrEmpty(csv))
+            {
+                return _cachedResources;
+            }
+            _cachedResources = ParseResourcesFromCsv(csv);
+            return _cachedResources;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading resources: {ex.Message}");
+            return _cachedResources;
+        }
+    }
+
     public async Task ClearAllAsync()
     {
         try
         {
             _cachedGenerators.Clear();
             _cachedResearch.Clear();
+            _cachedResources.Clear();
             await DeleteCsvFile(GeneratorsFileName);
             await DeleteCsvFile(ResearchFileName);
+            await DeleteCsvFile(ResourcesFileName);
         }
         catch (Exception ex)
         {
@@ -97,11 +134,27 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
     private string ConvertGeneratorsToCsv(List<Generator> generators)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Name,BaseProduction,Count,Cost,CostRatio");
+        sb.AppendLine("Name,BaseProduction,Resources,Count,Cost,ResourceCosts,CostRatio");
         
         foreach (var generator in generators)
         {
-            sb.AppendLine($"{EscapeCsvField(generator.Name)},{generator.BaseProduction.ToString(CultureInfo.InvariantCulture)},{generator.Count},{generator.Cost.ToString(CultureInfo.InvariantCulture)},{generator.CostRatio.ToString(CultureInfo.InvariantCulture)}");
+            // Convert resources to semicolon-separated "Name:Value" pairs
+            string resourcesStr = string.Empty;
+            if (generator.Resources != null && generator.Resources.Count > 0)
+            {
+                var resourcePairs = generator.Resources.Select(r => $"{EscapeCsvField(r.Key)}:{r.Value.ToString(CultureInfo.InvariantCulture)}");
+                resourcesStr = string.Join(";", resourcePairs);
+            }
+            
+            // Convert resource costs to semicolon-separated "Name:Value" pairs
+            string resourceCostsStr = string.Empty;
+            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+            {
+                var costPairs = generator.ResourceCosts.Select(r => $"{EscapeCsvField(r.Key)}:{r.Value.ToString(CultureInfo.InvariantCulture)}");
+                resourceCostsStr = string.Join(";", costPairs);
+            }
+            
+            sb.AppendLine($"{EscapeCsvField(generator.Name)},{generator.BaseProduction.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourcesStr)},{generator.Count},{generator.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{generator.CostRatio.ToString(CultureInfo.InvariantCulture)}");
         }
         
         return sb.ToString();
@@ -110,12 +163,20 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
     private string ConvertResearchToCsv(List<Research> research)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Name,MultiplierValue,Cost,TargetGenerators");
+        sb.AppendLine("Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators");
         
         foreach (var item in research)
         {
+            // Convert resource costs to semicolon-separated "Name:Value" pairs
+            string resourceCostsStr = string.Empty;
+            if (item.ResourceCosts != null && item.ResourceCosts.Count > 0)
+            {
+                var costPairs = item.ResourceCosts.Select(r => $"{EscapeCsvField(r.Key)}:{r.Value.ToString(CultureInfo.InvariantCulture)}");
+                resourceCostsStr = string.Join(";", costPairs);
+            }
+            
             var targetGenerators = string.Join(";", item.TargetGenerators);
-            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.MultiplierValue.ToString(CultureInfo.InvariantCulture)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(targetGenerators)}");
+            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.MultiplierValue.ToString(CultureInfo.InvariantCulture)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{EscapeCsvField(targetGenerators)}");
         }
         
         return sb.ToString();
@@ -134,17 +195,52 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
             if (string.IsNullOrEmpty(line)) continue;
             
             var fields = ParseCsvLine(line);
-            if (fields.Count >= 5)
+            if (fields.Count < 7) continue; // Skip invalid lines
+            
+            var generator = new Generator();
+            
+            // Format: Name,BaseProduction,Resources,Count,Cost,ResourceCosts,CostRatio
+            generator.Name = UnescapeCsvField(fields[0]);
+            generator.BaseProduction = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var bp) ? bp : 0;
+            
+            // Parse resources
+            var resourcesStr = UnescapeCsvField(fields[2]);
+            if (!string.IsNullOrEmpty(resourcesStr))
             {
-                generators.Add(new Generator
+                generator.Resources = new Dictionary<string, double>();
+                var resourcePairs = resourcesStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var pair in resourcePairs)
                 {
-                    Name = UnescapeCsvField(fields[0]),
-                    BaseProduction = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var bp) ? bp : 0,
-                    Count = int.TryParse(fields[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : 0,
-                    Cost = double.TryParse(fields[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0,
-                    CostRatio = double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio) ? ratio : 0
-                });
+                    var parts = pair.Split(':', 2);
+                    if (parts.Length == 2 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                    {
+                        generator.Resources[parts[0]] = value;
+                    }
+                }
             }
+            
+            generator.Count = int.TryParse(fields[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) ? count : 0;
+            generator.Cost = double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
+            
+            // Parse resource costs - always initialize the dictionary
+            generator.ResourceCosts = new Dictionary<string, double>();
+            var resourceCostsStr = UnescapeCsvField(fields[5]);
+            if (!string.IsNullOrEmpty(resourceCostsStr))
+            {
+                var costPairs = resourceCostsStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var pair in costPairs)
+                {
+                    var parts = pair.Split(':', 2);
+                    if (parts.Length == 2 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                    {
+                        generator.ResourceCosts[parts[0]] = value;
+                    }
+                }
+            }
+            
+            generator.CostRatio = double.TryParse(fields[6], NumberStyles.Float, CultureInfo.InvariantCulture, out var ratio) ? ratio : 0;
+            
+            generators.Add(generator);
         }
         
         return generators;
@@ -163,23 +259,78 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
             if (string.IsNullOrEmpty(line)) continue;
             
             var fields = ParseCsvLine(line);
-            if (fields.Count >= 4)
+            if (fields.Count < 5) continue; // Skip invalid lines
+            
+            var researchItem = new Research();
+            
+            // Format: Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators
+            researchItem.Name = UnescapeCsvField(fields[0]);
+            researchItem.MultiplierValue = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mv) ? mv : 0;
+            researchItem.Cost = double.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
+            
+            // Parse resource costs - always initialize the dictionary
+            researchItem.ResourceCosts = new Dictionary<string, double>();
+            var resourceCostsStr = UnescapeCsvField(fields[3]);
+            if (!string.IsNullOrEmpty(resourceCostsStr))
             {
-                var targetGenerators = UnescapeCsvField(fields[3])
-                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                    .ToList();
-                
-                research.Add(new Research
+                var costPairs = resourceCostsStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var pair in costPairs)
                 {
-                    Name = UnescapeCsvField(fields[0]),
-                    MultiplierValue = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mv) ? mv : 0,
-                    Cost = double.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0,
-                    TargetGenerators = targetGenerators
+                    var parts = pair.Split(':', 2);
+                    if (parts.Length == 2 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                    {
+                        researchItem.ResourceCosts[parts[0]] = value;
+                    }
+                }
+            }
+            
+            var targetGenerators = UnescapeCsvField(fields[4])
+                .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+            researchItem.TargetGenerators = targetGenerators;
+            
+            research.Add(researchItem);
+        }
+        
+        return research;
+    }
+
+    private string ConvertResourcesToCsv(List<Resource> resources)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Name");
+        
+        foreach (var resource in resources)
+        {
+            sb.AppendLine($"{EscapeCsvField(resource.Name)}");
+        }
+        
+        return sb.ToString();
+    }
+
+    private List<Resource> ParseResourcesFromCsv(string csv)
+    {
+        var resources = new List<Resource>();
+        var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        if (lines.Length < 2) return resources; // Need at least header + 1 data line
+        
+        for (int i = 1; i < lines.Length; i++) // Skip header
+        {
+            var line = lines[i].Trim();
+            if (string.IsNullOrEmpty(line)) continue;
+            
+            var fields = ParseCsvLine(line);
+            if (fields.Count >= 1)
+            {
+                resources.Add(new Resource
+                {
+                    Name = UnescapeCsvField(fields[0])
                 });
             }
         }
         
-        return research;
+        return resources;
     }
 
     private List<string> ParseCsvLine(string line)
