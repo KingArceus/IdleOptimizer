@@ -133,6 +133,7 @@
                                         <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
                                         <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                         <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                        <MudSelectItem Value="@("No")">No</MudSelectItem>
                                     </MudSelect>
                                 </MudStack>
                                 <MudNumericField @bind-Value="@editItem.Count"
@@ -181,6 +182,7 @@
                                         <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
                                         <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                         <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                        <MudSelectItem Value="@("No")">No</MudSelectItem>
                                     </MudSelect>
                                 </MudStack>
                                 
@@ -445,7 +447,11 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1e27) // Octillion
+        if (absValue >= 1e30) // Nonillion
+        {
+            return $"{sign}{(absValue / 1e30).ToString(format)}No";
+        }
+        else if (absValue >= 1e27) // Octillion
         {
             return $"{sign}{(absValue / 1e27).ToString(format)}Oc";
         }
