@@ -15,73 +15,34 @@
     <MudCard>
         <MudCardContent>
             <MudText Typo="Typo.h4" Class="mb-4">Idle Game Optimizer</MudText>
-            <MudText Typo="Typo.body1" Class="mb-4">
-                Total Production: <strong>@FormatNumber(CalculationService.GetTotalProduction())</strong>
-            </MudText>
-            @{
-                var productionByResource = CalculationService.GetTotalProductionByResource();
-            }
-            <MudCard Class="mb-4">
-                <MudCardContent>
-                    <MudText Typo="Typo.h6" Class="mb-2">Resources</MudText>
-                    @if (CalculationService.Resources.Count > 0)
-                    {
-                        <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
-                                  Elevation="1" Class="mt-2">
-                            <HeaderContent>
-                                <MudTh>Resource Name</MudTh>
-                                <MudTh Align="Align.Right">Total Production</MudTh>
-                                <MudTh>Actions</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="Resource Name">
-                                    <strong>@context.Name</strong>
-                                </MudTd>
-                                <MudTd DataLabel="Total Production" Align="Align.Right">
-                                    @{
-                                        CalculationService.UpdateResourceTotalProduction();
-                                        var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
-                                    }
-                                    <MudText Typo="Typo.body1">@FormatNumber(resourceProduction, 2)</MudText>
-                                </MudTd>
-                                <MudTd DataLabel="Actions">
-                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
-                                             StartIcon="@Icons.Material.Filled.Delete" 
-                                             OnClick="async () => await DeleteResource(context)">
-                                        Delete
-                                    </MudButton>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
-                    }
-                </MudCardContent>
-            </MudCard>
-
-            @if (productionByResource.Count > 1 || (productionByResource.Count == 1 && !productionByResource.ContainsKey("Default")))
+            @if (CalculationService.Resources.Count > 0)
             {
-                <MudCard Class="mb-4">
-                    <MudCardContent>
-                        <MudText Typo="Typo.h6" Class="mb-2">Production by Resource</MudText>
-                        <MudStack Spacing="1">
-                            @foreach (var resource in productionByResource.OrderByDescending(r => r.Value))
-                            {
-                                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                    <MudText Typo="Typo.body1" Style="min-width: 150px;"><strong>@resource.Key:</strong></MudText>
-                                    <MudText Typo="Typo.body1">@FormatNumber(resource.Value, 2)</MudText>
-                                    @{
-                                        var totalProd = CalculationService.GetTotalProduction();
-                                        var percentage = totalProd > 0 ? (resource.Value / totalProd) * 100 : 0;
-                                    }
-                                    <MudChip Size="Size.Small" Color="Color.Info">@percentage.ToString("F1")%</MudChip>
-                                </MudStack>
+                <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
+                          Elevation="1" Class="mt-2 mb-4">
+                    <RowTemplate>
+                        <MudTd DataLabel="Resource Name">
+                            <strong>@context.Name</strong>
+                        </MudTd>
+                        <MudTd DataLabel="Total Production" Align="Align.Right">
+                            @{
+                                CalculationService.UpdateResourceTotalProduction();
+                                var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
                             }
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
+                            <MudText Typo="Typo.body1">@FormatNumber(resourceProduction, 2)</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Actions">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
+                                     StartIcon="@Icons.Material.Filled.Delete" 
+                                     OnClick="async () => await DeleteResource(context)">
+                                Delete
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
             }
 
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
@@ -119,7 +80,6 @@
                 <HeaderContent>
                     <MudTh>Item Name</MudTh>
                     <MudTh>Type</MudTh>
-                    <MudTh>Target</MudTh>
                     <MudTh Align="Align.Right">Contribute</MudTh>
                     <MudTh Align="Align.Right">Cost</MudTh>
                     <MudTh Align="Align.Right">Gain</MudTh>
@@ -155,28 +115,6 @@
                             <MudChip Size="Size.Small" Color="@(context.Type == "Generator" ? Color.Primary : Color.Secondary)">
                                 @context.Type
                             </MudChip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Target">
-                        @if (context.Type == "Research" && context.SourceItem is Research research)
-                        {
-                            @if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
-                            {
-                                @foreach (var target in research.TargetGenerators)
-                                {
-                                    <div class="mb-1">
-                                        @target <span style="color: #4caf50; font-weight: bold;">(x@((research.MultiplierValue ).ToString("F0")))</span>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <span>-</span>
-                            }
-                        }
-                        else
-                        {
-                            <span>-</span>
                         }
                     </MudTd>
                     <MudTd DataLabel="Contribute" Align="Align.Right">
@@ -273,9 +211,21 @@
                                 </MudStack>
                             }
                         }
-                        else
+                        else if (context.Type == "Research" && context.SourceItem is Research research)
                         {
-                            <span>-</span>
+                            @if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
+                            {
+                                @foreach (var target in research.TargetGenerators)
+                                {
+                                    <div class="mb-1">
+                                        @target <span style="color: #4caf50; font-weight: bold;">(x@((research.MultiplierValue ).ToString()))</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
                         }
                     </MudTd>
                     <MudTd DataLabel="Cost" Align="Align.Right">
@@ -424,9 +374,6 @@
                                             <strong>@cost.Key:</strong> @FormatNumber(cost.Value, 2)
                                         </div>
                                     }
-                                    <div class="text-caption" style="color: #90caf9;">
-                                        Total: @FormatNumber(context.Cost, 2)
-                                    </div>
                                 </MudStack>
                             }
                             else
@@ -443,13 +390,13 @@
                             <MudStack Spacing="1">
                                 @foreach (var gain in context.GainByResource)
                                 {
-                                    <div>
-                                        <strong>@gain.Key:</strong> @FormatNumber(gain.Value, 2)
-                                    </div>
+                                    @if (gain.Value != 0)
+                                    {
+                                        <div>
+                                            <strong>@gain.Key:</strong> @FormatNumber(gain.Value, 2)
+                                        </div>
+                                    }
                                 }
-                                <div class="text-caption" style="color: #90caf9;">
-                                    Total: @FormatNumber(context.Gain, 2)
-                                </div>
                             </MudStack>
                         }
                         else
@@ -536,7 +483,6 @@
     private System.Threading.Timer? _timer;
     private double _lastTotalProduction = 0;
     private const double ProductionPerSecond = 1.0; // Production rate per second
-    private string? editBaseProductionAbbr = null;
     private string? editCostAbbr = null;
     private InputFile fileInputElement = default!;
 

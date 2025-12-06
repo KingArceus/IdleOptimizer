@@ -1,42 +1,127 @@
 @using MudBlazor
 @inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
 
 <MudThemeProvider Theme="@theme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
-<MudProvider>
-    <MudLayout>
-        <MudAppBar Elevation="1">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
-            <MudText Typo="Typo.h6">Idle Game Optimizer</MudText>
-            <MudSpacer />
-        </MudAppBar>
-        <MudMainContent>
-            @Body
-        </MudMainContent>
-    </MudLayout>
-</MudProvider>
+<MudLayout Class="@(isDarkTheme ? "" : "theme-office")">
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
+        <MudText Typo="Typo.h6">Idle Game Optimizer</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@(isDarkTheme ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
+                       Color="Color.Inherit" 
+                       OnClick="ToggleTheme"
+                       Title="@(isDarkTheme ? "Switch to Office Theme" : "Switch to Dark Theme")" />
+    </MudAppBar>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
 
 @code {
-    private MudTheme theme = new()
+    private bool isDarkTheme = true;
+    private MudTheme theme = new();
+
+    protected override async Task OnInitializedAsync()
     {
-        Palette = new PaletteDark()
+        await LoadThemePreference();
+        UpdateTheme();
+    }
+
+    private async Task LoadThemePreference()
+    {
+        try
         {
-            Primary = "#7e6fff",
-            Secondary = "#ff6e9f",
-            AppbarBackground = "#1a1a27",
-            Background = "#1a1a27",
-            BackgroundGrey = "#27293d",
-            Surface = "#27293d",
-            DrawerBackground = "#1a1a27",
-            DrawerText = "rgba(255,255,255, 0.8)",
-            DrawerIcon = "rgba(255,255,255, 0.8)",
-            TextPrimary = "rgba(255,255,255, 0.8)",
-            TextSecondary = "rgba(255,255,255, 0.5)",
-            ActionDefault = "#adadb1",
-            Divider = "rgba(255,255,255, 0.12)",
-            DividerLight = "rgba(255,255,255, 0.06)"
+            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "appTheme");
+            if (!string.IsNullOrEmpty(savedTheme))
+            {
+                isDarkTheme = savedTheme == "dark";
+            }
         }
-    };
+        catch
+        {
+            // Use default dark theme if loading fails
+            isDarkTheme = true;
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkTheme = !isDarkTheme;
+        UpdateTheme();
+        StateHasChanged();
+        await SaveThemePreference();
+    }
+
+    private void UpdateTheme()
+    {
+        if (isDarkTheme)
+        {
+            theme = new MudTheme()
+            {
+                Palette = new PaletteDark()
+                {
+                    Primary = "#7e6fff",
+                    Secondary = "#ff6e9f",
+                    AppbarBackground = "#1a1a27",
+                    Background = "#1a1a27",
+                    BackgroundGrey = "#27293d",
+                    Surface = "#27293d",
+                    DrawerBackground = "#1a1a27",
+                    DrawerText = "rgba(255,255,255, 0.8)",
+                    DrawerIcon = "rgba(255,255,255, 0.8)",
+                    TextPrimary = "rgba(255,255,255, 0.8)",
+                    TextSecondary = "rgba(255,255,255, 0.5)",
+                    ActionDefault = "#adadb1",
+                    Divider = "rgba(255,255,255, 0.12)",
+                    DividerLight = "rgba(255,255,255, 0.06)"
+                }
+            };
+        }
+        else
+        {
+            theme = new MudTheme()
+            {
+                Palette = new PaletteLight()
+                {
+                    Primary = "#594AE2",
+                    Secondary = "#FF4081",
+                    AppbarBackground = "#594AE2",
+                    Background = "#F5F5F5",
+                    BackgroundGrey = "#E0E0E0",
+                    Surface = "#FFFFFF",
+                    DrawerBackground = "#FFFFFF",
+                    DrawerText = "rgba(0,0,0, 0.87)",
+                    DrawerIcon = "rgba(0,0,0, 0.54)",
+                    TextPrimary = "rgba(0,0,0, 0.87)",
+                    TextSecondary = "rgba(0,0,0, 0.54)",
+                    ActionDefault = "rgba(0,0,0, 0.54)",
+                    Divider = "rgba(0,0,0, 0.12)",
+                    DividerLight = "rgba(0,0,0, 0.08)",
+                    // Office theme properties for MudSelectItem and MudChip
+                    OverlayLight = "rgba(255,255,255, 0.8)",
+                    OverlayDark = "rgba(0,0,0, 0.05)",
+                    LinesInputs = "rgba(0,0,0, 0.23)",
+                    TableLines = "rgba(224,224,224, 1)",
+                    ChipDefault = "#E0E0E0",
+                    ChipDefaultHover = "#BDBDBD"
+                }
+            };
+        }
+    }
+
+    private async Task SaveThemePreference()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "appTheme", isDarkTheme ? "dark" : "office");
+        }
+        catch
+        {
+            // Ignore save errors
+        }
+    }
 }
 

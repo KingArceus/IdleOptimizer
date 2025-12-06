@@ -76,3 +76,68 @@ main {
     }
 }
 
+/* Office Theme: Outlined style for MudChip and MudSelectItem */
+:global(.theme-office) :global(.mud-chip),
+:global(.mud-theme-light) :global(.mud-chip) {
+    background-color: transparent !important;
+    border: 1px solid rgba(0, 0, 0, 0.23) !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-primary),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-primary) {
+    border-color: #594AE2 !important;
+    color: #594AE2 !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-secondary),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-secondary) {
+    border-color: #FF4081 !important;
+    color: #FF4081 !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-success),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-success) {
+    border-color: var(--mud-palette-success) !important;
+    color: var(--mud-palette-success) !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-warning),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-warning) {
+    border-color: var(--mud-palette-warning) !important;
+    color: var(--mud-palette-warning) !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-error),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-error) {
+    border-color: var(--mud-palette-error) !important;
+    color: var(--mud-palette-error) !important;
+}
+
+:global(.theme-office) :global(.mud-chip.mud-chip-color-info),
+:global(.mud-theme-light) :global(.mud-chip.mud-chip-color-info) {
+    border-color: var(--mud-palette-info) !important;
+    color: var(--mud-palette-info) !important;
+}
+
+:global(.theme-office) :global(.mud-chip:hover),
+:global(.mud-theme-light) :global(.mud-chip:hover) {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Office Theme: Outlined style for MudSelectItem */
+:global(.theme-office) :global(.mud-select-item),
+:global(.mud-theme-light) :global(.mud-select-item) {
+    background-color: transparent !important;
+}
+
+:global(.theme-office) :global(.mud-select-item:hover),
+:global(.mud-theme-light) :global(.mud-select-item:hover) {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+:global(.theme-office) :global(.mud-select-item.mud-selected-item),
+:global(.mud-theme-light) :global(.mud-select-item.mud-selected-item) {
+    background-color: rgba(89, 74, 226, 0.08) !important;
+    color: #594AE2 !important;
+}
+
