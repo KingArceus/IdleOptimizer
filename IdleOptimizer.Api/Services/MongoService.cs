@@ -20,11 +20,8 @@ public class MongoService : IMongoService
         var database = client.GetDatabase(DatabaseName);
         _collection = database.GetCollection<SyncData>(CollectionName);
 
-        // Create index on UserId for faster lookups
-        var indexOptions = new CreateIndexOptions { Unique = true };
-        var indexDefinition = Builders<SyncData>.IndexKeys.Ascending(x => x.UserId);
-        var indexModel = new CreateIndexModel<SyncData>(indexDefinition, indexOptions);
-        _collection.Indexes.CreateOne(indexModel);
+        // Note: Since UserId is now the _id field, we don't need a separate index
+        // MongoDB automatically indexes the _id field
     }
 
     public async Task SaveSyncDataAsync(SyncData data)
