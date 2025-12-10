@@ -2,15 +2,23 @@ using IdleOptimizer.Models;
 using Microsoft.JSInterop;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
+using System.Net.Http.Json;
 
 namespace IdleOptimizer.Services;
 
-public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
+public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : ILocalStorageService
 {
     private const string GeneratorsFileName = "generators.csv";
     private const string ResearchFileName = "research.csv";
     private const string ResourcesFileName = "resources.csv";
+    private const string ApiBaseUrl = "https://api.example.com"; // TODO: Configure this via appsettings or environment
+    private const int DebounceDelayMs = 2000; // 2 seconds
+    
     private readonly IJSRuntime _jsRuntime = jsRuntime;
+    private readonly HttpClient _httpClient = httpClient;
+    private CancellationTokenSource? _saveDebounceToken;
+    
     private List<Generator> _cachedGenerators = [];
     private List<Research> _cachedResearch = [];
     private List<Resource> _cachedResources = [];
@@ -453,6 +461,128 @@ public class LocalStorageService(IJSRuntime jsRuntime) : ILocalStorageService
     {
         await _jsRuntime.InvokeVoidAsync("csvStorage.importCsvFile", ResearchFileName, csvContent);
         _cachedResearch = ParseResearchFromCsv(csvContent);
+    }
+
+    // User ID management
+    public async Task<string?> GetUserIdAsync()
+    {
+        try
+        {
+            return await _jsRuntime.InvokeAsync<string>("csvStorage.getUserId");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task SetUserIdAsync(string userId)
+    {
+        try
+        {
+            await _jsRuntime.InvokeVoidAsync("csvStorage.setUserId", userId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting user ID: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> HasUserIdAsync()
+    {
+        try
+        {
+            return await _jsRuntime.InvokeAsync<bool>("csvStorage.hasUserId");
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // Cloud sync methods
+    public async Task SyncToCloudAsync(List<Generator> generators, List<Research> research, List<Resource> resources)
+    {
+        try
+        {
+            var userId = await GetUserIdAsync();
+            if (string.IsNullOrEmpty(userId))
+            {
+                // No user ID set, skip sync
+                return;
+            }
+
+            var syncData = new SyncData
+            {
+                UserId = userId,
+                Generators = generators,
+                Research = research,
+                Resources = resources,
+                LastModified = DateTime.UtcNow
+            };
+
+            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/api/sync/save", syncData);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            // Log error, don't throw
+            Console.WriteLine($"Sync error: {ex.Message}");
+        }
+    }
+
+    public async Task<SyncData?> SyncFromCloudAsync()
+    {
+        try
+        {
+            var userId = await GetUserIdAsync();
+            if (string.IsNullOrEmpty(userId))
+            {
+                // No user ID set, return null
+                return null;
+            }
+
+            var response = await _httpClient.GetAsync($"{ApiBaseUrl}/api/sync/load?userId={Uri.EscapeDataString(userId)}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null; // No data exists for this user
+            }
+
+            response.EnsureSuccessStatusCode();
+            var syncData = await response.Content.ReadFromJsonAsync<SyncData>();
+            return syncData;
+        }
+        catch (Exception ex)
+        {
+            // Log error, don't throw
+            Console.WriteLine($"Sync load error: {ex.Message}");
+            return null;
+        }
+    }
+
+    // Debounced auto-save with cloud sync
+    public async Task SaveStateWithAutoSaveAsync(List<Generator> generators, List<Research> research, List<Resource> resources)
+    {
+        // Cancel previous debounce
+        _saveDebounceToken?.Cancel();
+        _saveDebounceToken = new CancellationTokenSource();
+
+        // Save locally immediately
+        await SaveGeneratorsAsync(generators);
+        await SaveResearchAsync(research);
+        await SaveResourcesAsync(resources);
+
+        // Debounce cloud sync
+        try
+        {
+            await Task.Delay(DebounceDelayMs, _saveDebounceToken.Token);
+            await SyncToCloudAsync(generators, research, resources);
+        }
+        catch (OperationCanceledException)
+        {
+            // Debounce was cancelled, ignore
+        }
     }
 }
 

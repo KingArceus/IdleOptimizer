@@ -53,3 +53,19 @@ window.clickFileInput = function (element) {
     }
 };
 
+// User ID management functions
+window.csvStorage.getUserId = function () {
+    return localStorage.getItem('userId') || null;
+};
+
+window.csvStorage.setUserId = function (userId) {
+    if (userId && userId.trim() !== '') {
+        localStorage.setItem('userId', userId.trim());
+    }
+};
+
+window.csvStorage.hasUserId = function () {
+    const userId = localStorage.getItem('userId');
+    return userId !== null && userId.trim() !== '';
+};
+

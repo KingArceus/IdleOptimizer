@@ -1,0 +1,55 @@
+using IdleOptimizer.Api.Models;
+using MongoDB.Driver;
+
+namespace IdleOptimizer.Api.Services;
+
+public class MongoService : IMongoService
+{
+    private readonly IMongoCollection<SyncData> _collection;
+    private const string DatabaseName = "idleoptimizer";
+    private const string CollectionName = "syncdata";
+
+    public MongoService(IConfiguration configuration)
+    {
+        // Configuration system automatically reads from appsettings.json and environment variables
+        // Environment variables with double underscores (MongoDB__ConnectionString) are automatically mapped to nested config
+        var connectionString = configuration.GetValue<string>("MongoDB:ConnectionString") 
+            ?? "mongodb://localhost:27017";
+
+        var client = new MongoClient(connectionString);
+        var database = client.GetDatabase(DatabaseName);
+        _collection = database.GetCollection<SyncData>(CollectionName);
+
+        // Create index on UserId for faster lookups
+        var indexOptions = new CreateIndexOptions { Unique = true };
+        var indexDefinition = Builders<SyncData>.IndexKeys.Ascending(x => x.UserId);
+        var indexModel = new CreateIndexModel<SyncData>(indexDefinition, indexOptions);
+        _collection.Indexes.CreateOne(indexModel);
+    }
+
+    public async Task SaveSyncDataAsync(SyncData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.UserId))
+        {
+            throw new ArgumentException("UserId cannot be null or empty", nameof(data));
+        }
+
+        data.LastModified = DateTime.UtcNow;
+
+        // Use ReplaceOne with upsert to either update existing or insert new
+        var filter = Builders<SyncData>.Filter.Eq(x => x.UserId, data.UserId);
+        await _collection.ReplaceOneAsync(filter, data, new ReplaceOptions { IsUpsert = true });
+    }
+
+    public async Task<SyncData?> LoadSyncDataAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("UserId cannot be null or empty", nameof(userId));
+        }
+
+        var filter = Builders<SyncData>.Filter.Eq(x => x.UserId, userId);
+        return await _collection.Find(filter).FirstOrDefaultAsync();
+    }
+}
+

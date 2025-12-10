@@ -15,5 +15,14 @@ public interface ILocalStorageService
     Task ExportResearchToFileAsync(List<Research> research);
     Task ImportGeneratorsFromFileAsync(string csvContent);
     Task ImportResearchFromFileAsync(string csvContent);
+    
+    // User ID management
+    Task<string?> GetUserIdAsync();
+    Task SetUserIdAsync(string userId);
+    Task<bool> HasUserIdAsync();
+    
+    // Cloud sync methods
+    Task SyncToCloudAsync(List<Generator> generators, List<Research> research, List<Resource> resources);
+    Task<SyncData?> SyncFromCloudAsync();
 }
 

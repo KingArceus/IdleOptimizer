@@ -73,6 +73,17 @@
                        OnClick="TriggerFileInput" Class="mb-2 ml-2">
                 Import Save Files
             </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
+                       OnClick="OpenUserIdDialog" Class="mb-2 ml-2">
+                @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
+                {
+                    <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
+                }
+                else
+                {
+                    <span>Set User ID</span>
+                }
+            </MudButton>
             <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
 
             <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
@@ -467,6 +478,8 @@
     private const double ProductionPerSecond = 1.0; // Production rate per second
     private string? editCostAbbr = null;
     private InputFile fileInputElement = default!;
+    private bool hasUserId = false;
+    private string? currentUserId = null;
     private class ResourceEntry
     {
         public string? ResourceName { get; set; }
@@ -488,6 +501,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Check for user ID and prompt if missing
+        hasUserId = await LocalStorageService.HasUserIdAsync();
+        if (hasUserId)
+        {
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+        }
+        else
+        {
+            // Prompt user to set ID (optional - they can skip)
+            await OpenUserIdDialog();
+        }
+        
         await CalculationService.InitializeAsync();
         RefreshRankings();
         _lastTotalProduction = CalculationService.GetTotalProduction();
@@ -1456,6 +1481,28 @@
             int minutes = seconds / 60;
             int secs = seconds % 60;
             return $"{minutes}m {secs}s";
+        }
+    }
+
+    private async Task OpenUserIdDialog()
+    {
+        var currentId = await LocalStorageService.GetUserIdAsync();
+        var parameters = new DialogParameters
+        {
+            ["LocalStorageService"] = LocalStorageService,
+            ["CurrentUserId"] = currentId
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UserIdDialog>("Set User ID", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            hasUserId = await LocalStorageService.HasUserIdAsync();
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+            Snackbar.Add("User ID saved successfully", Severity.Success);
+            StateHasChanged();
         }
     }
 

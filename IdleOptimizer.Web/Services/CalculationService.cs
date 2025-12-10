@@ -1090,10 +1090,52 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         await _localStorage.SaveGeneratorsAsync(Generators);
         await _localStorage.SaveResearchAsync(Research);
         await _localStorage.SaveResourcesAsync(Resources);
+        
+        // Sync to cloud if user ID is set (fire-and-forget)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (await _localStorage.HasUserIdAsync())
+                {
+                    await _localStorage.SyncToCloudAsync(Generators, Research, Resources);
+                }
+            }
+            catch
+            {
+                // Ignore errors in background sync
+            }
+        });
     }
 
     public async Task LoadStateAsync()
     {
+        // Try to load from cloud first if user ID is set
+        if (await _localStorage.HasUserIdAsync())
+        {
+            var cloudData = await _localStorage.SyncFromCloudAsync();
+            if (cloudData != null)
+            {
+                // Check if we have local data to compare timestamps
+                var localGenerators = await _localStorage.LoadGeneratorsAsync();
+                var localResearch = await _localStorage.LoadResearchAsync();
+                var localResources = await _localStorage.LoadResourcesAsync();
+                
+                // For now, use cloud data if available (can be enhanced with timestamp comparison)
+                Generators = cloudData.Generators;
+                Research = cloudData.Research;
+                Resources = cloudData.Resources;
+                
+                // Save cloud data to local storage
+                await _localStorage.SaveGeneratorsAsync(Generators);
+                await _localStorage.SaveResearchAsync(Research);
+                await _localStorage.SaveResourcesAsync(Resources);
+                
+                return;
+            }
+        }
+        
+        // Fallback to local load
         Generators = await _localStorage.LoadGeneratorsAsync();
         Research = await _localStorage.LoadResearchAsync();
         Resources = await _localStorage.LoadResourcesAsync();
