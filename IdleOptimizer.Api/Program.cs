@@ -29,6 +29,21 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNamingPolicy = null; // Keep original property names
 });
 
+// Read allowed origins from configuration
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+    ?? new[] { "http://localhost:5000", "https://localhost:5001" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorWasm", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
