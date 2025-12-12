@@ -30,19 +30,19 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 // Read allowed origins from configuration
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
-    ?? new[] { "http://localhost:5000", "https://localhost:5001" };
-
-builder.Services.AddCors(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.AddPolicy("AllowBlazorWasm", policy =>
+    builder.Services.AddCors(options =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        options.AddPolicy("AllowBlazorWasm", policy =>
+        {
+            policy.WithOrigins("http://localhost:5000", "https://localhost:5001")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
     });
-});
+}
 
 var app = builder.Build();
 
@@ -55,7 +55,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowBlazorWasm");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AllowBlazorWasm");
+}
 
 app.UseAuthorization();
 
