@@ -92,7 +92,6 @@
             if (form.IsValid && !string.IsNullOrWhiteSpace(userId))
             {
                 var trimmedUserId = userId.Trim();
-                
                 // If local storage has existing username, keep the current name changing logic
                 // (check for existing username on cloud and alert if overwriting)
                 if (!string.IsNullOrEmpty(CurrentUserId))

@@ -17,21 +17,18 @@
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <MudText Typo="Typo.h4">Idle Game Optimizer</MudText>
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
-                               OnClick="OpenUserIdDialog">
                         @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
                         {
-                            <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
+                               OnClick="OpenUserIdDialog">
+                                <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
+                            </MudButton>
                         }
-                        else
-                        {
-                            <span>Set User ID</span>
-                        }
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.PersonAdd" 
-                               OnClick="CreateNewUserProfile">
-                        New User Profile
-                    </MudButton>
+
+                        <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.PersonAdd" 
+                           OnClick="CreateNewUserProfile">
+                            <span> New User Profile</span>
+                        </MudButton>
                 </MudStack>
             </MudStack>
             @if (CalculationService.Resources.Count > 0)
@@ -1585,20 +1582,8 @@
 
         if (!result.Canceled)
         {
-            hasUserId = await LocalStorageService.HasUserIdAsync();
-            currentUserId = await LocalStorageService.GetUserIdAsync();
-            
-            // Load user data from cloud based on username
-            if (hasUserId && !string.IsNullOrEmpty(currentUserId))
-            {
-                await LoadUserDataFromCloud();
-            }
-            else if (keepCurrentData)
-            {
-                // If user kept current data and no cloud data exists, save current data to cloud
-                await CalculationService.SaveStateAsync();
-            }
-            
+            await CalculationService.SaveStateAsync();
+
             Snackbar.Add("New user profile created successfully", Severity.Success);
             StateHasChanged();
         }

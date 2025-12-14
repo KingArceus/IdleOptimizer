@@ -1,4 +1,9 @@
 // CSV File Storage for Blazor WebAssembly
+// Ensure window is available
+if (typeof window === 'undefined') {
+    throw new Error('csvStorage.js must be loaded in a browser environment');
+}
+
 window.csvStorage = {
     // Save CSV content to localStorage (automatic persistence, no download)
     saveCsvToStorage: function (fileName, csvContent) {
@@ -43,6 +48,22 @@ window.csvStorage = {
         if (fileInput) {
             fileInput.click();
         }
+    },
+    
+    // User ID management functions
+    getUserId: function () {
+        return localStorage.getItem('userId') || null;
+    },
+    
+    setUserId: function (userId) {
+        if (userId && userId.trim() !== '') {
+            localStorage.setItem('userId', userId.trim());
+        }
+    },
+    
+    hasUserId: function () {
+        const userId = localStorage.getItem('userId');
+        return userId !== null && userId.trim() !== '';
     }
 };
 
@@ -53,19 +74,21 @@ window.clickFileInput = function (element) {
     }
 };
 
-// User ID management functions
-window.csvStorage.getUserId = function () {
-    return localStorage.getItem('userId') || null;
-};
-
-window.csvStorage.setUserId = function (userId) {
-    if (userId && userId.trim() !== '') {
-        localStorage.setItem('userId', userId.trim());
+// Verify that all required functions are available
+if (window.csvStorage) {
+    if (!window.csvStorage.setUserId) {
+        console.error('csvStorage.setUserId is not defined!');
     }
-};
-
-window.csvStorage.hasUserId = function () {
-    const userId = localStorage.getItem('userId');
-    return userId !== null && userId.trim() !== '';
-};
+    if (!window.csvStorage.getUserId) {
+        console.error('csvStorage.getUserId is not defined!');
+    }
+    if (!window.csvStorage.hasUserId) {
+        console.error('csvStorage.hasUserId is not defined!');
+    }
+    if (window.csvStorage.setUserId && window.csvStorage.getUserId && window.csvStorage.hasUserId) {
+        console.log('csvStorage initialized successfully with all User ID functions');
+    }
+} else {
+    console.error('window.csvStorage is not defined!');
+}
 
