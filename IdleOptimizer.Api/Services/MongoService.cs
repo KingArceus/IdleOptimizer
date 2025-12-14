@@ -50,5 +50,21 @@ public class MongoService : IMongoService
         var filter = Builders<SyncData>.Filter.Eq(x => x.UserId, userId);
         return await _collection.Find(filter).FirstOrDefaultAsync();
     }
+
+    public async Task<List<string>> GetAllUserIdsAsync()
+    {
+        try
+        {
+            // Since UserId is the _id field, we can use Distinct to get all unique user IDs
+            // This is more efficient than projecting all documents
+            var userIds = await _collection.DistinctAsync<string>("_id", FilterDefinition<SyncData>.Empty);
+            return userIds.ToList().OrderBy(id => id).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all user IDs");
+            return new List<string>();
+        }
+    }
 }
 

@@ -77,5 +77,20 @@ public class SyncController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while loading data" });
         }
     }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        try
+        {
+            var userIds = await _mongoService.GetAllUserIdsAsync();
+            return Ok(userIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all user IDs");
+            return StatusCode(500, new { error = "An error occurred while retrieving user IDs" });
+        }
+    }
 }
 

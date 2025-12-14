@@ -6,5 +6,6 @@ public interface IMongoService
 {
     Task SaveSyncDataAsync(SyncData data);
     Task<SyncData?> LoadSyncDataAsync(string userId);
+    Task<List<string>> GetAllUserIdsAsync();
 }
 

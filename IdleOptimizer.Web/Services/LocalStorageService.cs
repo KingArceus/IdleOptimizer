@@ -519,6 +519,23 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         }
     }
 
+    public async Task<List<string>> GetAllUserIdsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/sync/users");
+            response.EnsureSuccessStatusCode();
+            var userIds = await response.Content.ReadFromJsonAsync<List<string>>();
+            return userIds ?? new List<string>();
+        }
+        catch (Exception ex)
+        {
+            // Log error, return empty list on failure
+            Console.WriteLine($"Error retrieving all user IDs: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
     // Cloud sync methods
     public async Task SyncToCloudAsync(List<Generator> generators, List<Research> research, List<Resource> resources)
     {

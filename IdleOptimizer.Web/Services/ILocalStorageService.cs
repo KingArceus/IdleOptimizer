@@ -21,6 +21,7 @@ public interface ILocalStorageService
     Task SetUserIdAsync(string userId);
     Task<bool> HasUserIdAsync();
     Task<bool> CheckUserExistsAsync(string userId);
+    Task<List<string>> GetAllUserIdsAsync();
     
     // Cloud sync methods
     Task SyncToCloudAsync(List<Generator> generators, List<Research> research, List<Resource> resources);
