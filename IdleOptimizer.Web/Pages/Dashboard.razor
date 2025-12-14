@@ -14,7 +14,20 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudCard>
         <MudCardContent>
-            <MudText Typo="Typo.h4" Class="mb-4">Idle Game Optimizer</MudText>
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                <MudText Typo="Typo.h4">Idle Game Optimizer</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
+                           OnClick="OpenUserIdDialog">
+                    @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
+                    {
+                        <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
+                    }
+                    else
+                    {
+                        <span>Set User ID</span>
+                    }
+                </MudButton>
+            </MudStack>
             @if (CalculationService.Resources.Count > 0)
             {
                 <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
@@ -72,17 +85,6 @@
             <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Upload" 
                        OnClick="TriggerFileInput" Class="mb-2 ml-2">
                 Import Save Files
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
-                       OnClick="OpenUserIdDialog" Class="mb-2 ml-2">
-                @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
-                {
-                    <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
-                }
-                else
-                {
-                    <span>Set User ID</span>
-                }
             </MudButton>
             <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
 

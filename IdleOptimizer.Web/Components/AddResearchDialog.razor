@@ -10,9 +10,20 @@
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
             <MudTextField @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
-            <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value (e.g., 0.25 for +25%)" 
-                            Variant="Variant.Outlined" Required="true" Min="0.01" />
-            
+            <MudStack Spacing="2" Class="mt-2" Row="true">
+                <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value" 
+                                Variant="Variant.Outlined" Required="true" Min="0.01" />
+                <MudSelect T="string" SelectedValues="SelectedGeneratorsEnumerable" SelectedValuesChanged="@OnGeneratorsChanged"
+                          Label="Target Generators" Variant="Variant.Outlined" MultiSelection="true" 
+                          HelperText="Select generators to target (or 'All' for all generators)">
+                    <MudSelectItem Value="@("All")">All</MudSelectItem>
+                    @foreach (var generator in CalculationService.Generators)
+                    {
+                        <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+
             <MudStack Spacing="2" Class="mt-2">
                 @foreach (var cost in resourceCosts)
                 {
@@ -51,9 +62,6 @@
                     Add Resource Cost
                 </MudButton>
             </MudStack>
-            
-            <MudTextField @bind-Value="@targetGeneratorsText" Label="Target Generators (comma-separated)" 
-                         Variant="Variant.Outlined" HelperText="Enter generator names separated by commas" Class="mt-2" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -69,7 +77,8 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
 
     private Research newResearch = new();
-    private string targetGeneratorsText = string.Empty;
+    private HashSet<string> selectedGenerators = new();
+    private IEnumerable<string> SelectedGeneratorsEnumerable => selectedGenerators;
     private MudForm? form;
     private bool success;
     private string[] errors = { };
@@ -93,6 +102,11 @@
         resourceCosts.Remove(cost);
     }
 
+    private void OnGeneratorsChanged(IEnumerable<string> values)
+    {
+        selectedGenerators = values.ToHashSet();
+    }
+
     private async Task Save()
     {
         if (form != null)
@@ -114,12 +128,19 @@
                     ? newResearch.ResourceCosts.Values.Sum() 
                     : 0;
                 
-                // Parse target generators
-                newResearch.TargetGenerators = targetGeneratorsText
-                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(t => t.Trim())
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .ToList();
+                // Handle target generators
+                if (selectedGenerators.Contains("All"))
+                {
+                    // If "All" is selected, include all generators
+                    newResearch.TargetGenerators = CalculationService.Generators
+                        .Select(g => g.Name)
+                        .ToList();
+                }
+                else
+                {
+                    // Otherwise, use the selected generators
+                    newResearch.TargetGenerators = selectedGenerators.ToList();
+                }
 
                 CalculationService.Research.Add(newResearch);
                 await CalculationService.SaveStateAsync();

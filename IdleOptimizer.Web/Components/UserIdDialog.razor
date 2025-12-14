@@ -1,5 +1,6 @@
 @using IdleOptimizer.Services
 @using MudBlazor
+@inject IDialogService DialogService
 
 <MudDialog>
     <TitleContent>
@@ -36,12 +37,50 @@
     private bool success;
     private string[] errors = { };
     private string userId = string.Empty;
+    private bool isCheckingUser = false;
 
     protected override void OnInitialized()
     {
         if (!string.IsNullOrEmpty(CurrentUserId))
         {
             userId = CurrentUserId;
+        }
+    }
+
+    private async Task<bool> CheckAndConfirmUserExists(string userIdToCheck)
+    {
+        if (isCheckingUser || string.IsNullOrWhiteSpace(userIdToCheck))
+        {
+            return false;
+        }
+
+        isCheckingUser = true;
+        try
+        {
+            var userExists = await LocalStorageService.CheckUserExistsAsync(userIdToCheck);
+            if (userExists)
+            {
+                // Show confirmation dialog
+                var parameters = new DialogParameters
+                {
+                    ["UserId"] = userIdToCheck
+                };
+                var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+                var confirmDialog = await DialogService.ShowAsync<OverwriteUserDialog>("User Already Exists", parameters, options);
+                var result = await confirmDialog.Result;
+                
+                if (result.Canceled || result.Data is not bool overwrite || !overwrite)
+                {
+                    // User cancelled or chose not to overwrite
+                    return false;
+                }
+                return true; // User confirmed overwrite
+            }
+            return true; // User doesn't exist, proceed
+        }
+        finally
+        {
+            isCheckingUser = false;
         }
     }
 
@@ -52,8 +91,22 @@
             await form.Validate();
             if (form.IsValid && !string.IsNullOrWhiteSpace(userId))
             {
-                await LocalStorageService.SetUserIdAsync(userId.Trim());
-                MudDialog.Close(DialogResult.Ok(userId.Trim()));
+                var trimmedUserId = userId.Trim();
+                
+                // Check if user exists and it's different from current user ID
+                // This handles both initialization (CurrentUserId is null/empty) and changing username
+                if (trimmedUserId != CurrentUserId)
+                {
+                    var canProceed = await CheckAndConfirmUserExists(trimmedUserId);
+                    if (!canProceed)
+                    {
+                        // User cancelled or chose not to overwrite
+                        return;
+                    }
+                }
+                
+                await LocalStorageService.SetUserIdAsync(trimmedUserId);
+                MudDialog.Close(DialogResult.Ok(trimmedUserId));
             }
         }
     }

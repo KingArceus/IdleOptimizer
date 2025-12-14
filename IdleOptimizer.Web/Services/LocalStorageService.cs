@@ -2,7 +2,6 @@ using IdleOptimizer.Models;
 using Microsoft.JSInterop;
 using System.Globalization;
 using System.Text;
-using System.Text.Json;
 using System.Net.Http.Json;
 
 namespace IdleOptimizer.Services;
@@ -12,7 +11,6 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
     private const string GeneratorsFileName = "generators.csv";
     private const string ResearchFileName = "research.csv";
     private const string ResourcesFileName = "resources.csv";
-    private const string ApiBaseUrl = "https://api.example.com"; // TODO: Configure this via appsettings or environment
     private const int DebounceDelayMs = 2000; // 2 seconds
     
     private readonly IJSRuntime _jsRuntime = jsRuntime;
@@ -500,6 +498,27 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         }
     }
 
+    public async Task<bool> CheckUserExistsAsync(string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                return false;
+            }
+
+            var response = await _httpClient.GetAsync($"/api/sync/load?userId={Uri.EscapeDataString(userId)}");
+            
+            // If user exists, we get OK (200), if not, we get NotFound (404)
+            return response.StatusCode == System.Net.HttpStatusCode.OK;
+        }
+        catch
+        {
+            // On error, assume user doesn't exist to be safe
+            return false;
+        }
+    }
+
     // Cloud sync methods
     public async Task SyncToCloudAsync(List<Generator> generators, List<Research> research, List<Resource> resources)
     {
@@ -521,7 +540,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 LastModified = DateTime.UtcNow
             };
 
-            var response = await _httpClient.PostAsJsonAsync($"{ApiBaseUrl}/api/sync/save", syncData);
+            var response = await _httpClient.PostAsJsonAsync("/api/sync/save", syncData);
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
@@ -542,7 +561,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 return null;
             }
 
-            var response = await _httpClient.GetAsync($"{ApiBaseUrl}/api/sync/load?userId={Uri.EscapeDataString(userId)}");
+            var response = await _httpClient.GetAsync($"/api/sync/load?userId={Uri.EscapeDataString(userId)}");
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
