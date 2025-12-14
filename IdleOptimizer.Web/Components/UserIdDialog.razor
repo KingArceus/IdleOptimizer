@@ -93,17 +93,22 @@
             {
                 var trimmedUserId = userId.Trim();
                 
-                // Check if user exists and it's different from current user ID
-                // This handles both initialization (CurrentUserId is null/empty) and changing username
-                if (trimmedUserId != CurrentUserId)
+                // If local storage has existing username, keep the current name changing logic
+                // (check for existing username on cloud and alert if overwriting)
+                if (!string.IsNullOrEmpty(CurrentUserId))
                 {
-                    var canProceed = await CheckAndConfirmUserExists(trimmedUserId);
-                    if (!canProceed)
+                    // Existing username in local storage - check for overwrite when changing
+                    if (trimmedUserId != CurrentUserId)
                     {
-                        // User cancelled or chose not to overwrite
-                        return;
+                        var canProceed = await CheckAndConfirmUserExists(trimmedUserId);
+                        if (!canProceed)
+                        {
+                            // User cancelled or chose not to overwrite
+                            return;
+                        }
                     }
                 }
+                // If no existing username in local storage, just set it (Dashboard will load from cloud)
                 
                 await LocalStorageService.SetUserIdAsync(trimmedUserId);
                 MudDialog.Close(DialogResult.Ok(trimmedUserId));

@@ -1,0 +1,46 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create New User Profile</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Do you want to keep your current data (generators, research, resources) for the new user profile?
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            If you choose to keep the data, it will be associated with the new user profile.
+        </MudText>
+        <MudText Typo="Typo.body2">
+            If you choose to clear the data, you will start with an empty profile.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Outlined" OnClick="ClearData">
+            Clear Data
+        </MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="KeepData">
+            Keep Current Data
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+
+    private void KeepData()
+    {
+        MudDialog.Close(DialogResult.Ok(true)); // true = keep data
+    }
+
+    private void ClearData()
+    {
+        MudDialog.Close(DialogResult.Ok(false)); // false = clear data
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

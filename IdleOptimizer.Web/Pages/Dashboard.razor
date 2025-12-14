@@ -16,17 +16,23 @@
         <MudCardContent>
             <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
                 <MudText Typo="Typo.h4">Idle Game Optimizer</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
-                           OnClick="OpenUserIdDialog">
-                    @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
-                    {
-                        <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
-                    }
-                    else
-                    {
-                        <span>Set User ID</span>
-                    }
-                </MudButton>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.AccountCircle" 
+                               OnClick="OpenUserIdDialog">
+                        @if (hasUserId && !string.IsNullOrEmpty(currentUserId))
+                        {
+                            <span>User ID: @currentUserId.Substring(0, Math.Min(8, currentUserId.Length))...</span>
+                        }
+                        else
+                        {
+                            <span>Set User ID</span>
+                        }
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.PersonAdd" 
+                               OnClick="CreateNewUserProfile">
+                        New User Profile
+                    </MudButton>
+                </MudStack>
             </MudStack>
             @if (CalculationService.Resources.Count > 0)
             {
@@ -503,17 +509,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Check for user ID and prompt if missing
+        // Check for user ID in LocalStorage first
         hasUserId = await LocalStorageService.HasUserIdAsync();
         if (hasUserId)
         {
+            // User ID exists in LocalStorage, load it
             currentUserId = await LocalStorageService.GetUserIdAsync();
+            // LoadStateAsync in InitializeAsync will automatically load from cloud if user ID is set
         }
-        else
-        {
-            // Prompt user to set ID (optional - they can skip)
-            await OpenUserIdDialog();
-        }
+        // Do not show dialog if user ID already exists in LocalStorage
         
         await CalculationService.InitializeAsync();
         RefreshRankings();
@@ -1489,6 +1493,8 @@
     private async Task OpenUserIdDialog()
     {
         var currentId = await LocalStorageService.GetUserIdAsync();
+        var hasExistingUserId = !string.IsNullOrEmpty(currentId);
+        
         var parameters = new DialogParameters
         {
             ["LocalStorageService"] = LocalStorageService,
@@ -1502,9 +1508,115 @@
         if (!result.Canceled)
         {
             hasUserId = await LocalStorageService.HasUserIdAsync();
-            currentUserId = await LocalStorageService.GetUserIdAsync();
-            Snackbar.Add("User ID saved successfully", Severity.Success);
+            var newUserId = await LocalStorageService.GetUserIdAsync();
+            
+            if (hasExistingUserId)
+            {
+                // Existing username in local storage - keep current name changing logic
+                // (check for existing username on cloud and alert if overwriting)
+                // This is already handled in UserIdDialog
+                var isChangingUser = newUserId != currentId;
+                if (isChangingUser)
+                {
+                    // User changed to a different username - load data from cloud for new username
+                    await LoadUserDataFromCloud();
+                    Snackbar.Add("User ID changed and data loaded from cloud", Severity.Success);
+                }
+                else
+                {
+                    // Same username, just updated
+                    Snackbar.Add("User ID saved successfully", Severity.Success);
+                }
+            }
+            else
+            {
+                // No existing username in local storage - get user data from cloud with input username
+                if (hasUserId && !string.IsNullOrEmpty(newUserId))
+                {
+                    await LoadUserDataFromCloud();
+                    Snackbar.Add("User data loaded from cloud", Severity.Success);
+                }
+            }
+            
+            currentUserId = newUserId;
             StateHasChanged();
+        }
+    }
+
+    private async Task CreateNewUserProfile()
+    {
+        // Ask if user wants to keep current data for new user profile
+        var keepDataOptions = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var keepDataDialog = await DialogService.ShowAsync<KeepDataForNewProfileDialog>("Create New User Profile", keepDataOptions);
+        var keepDataResult = await keepDataDialog.Result;
+
+        if (keepDataResult.Canceled)
+        {
+            return; // User cancelled
+        }
+
+        var keepCurrentData = keepDataResult.Data is bool keepData && keepData;
+
+        // If user chose to clear data, clear all current data
+        if (!keepCurrentData)
+        {
+            CalculationService.Generators.Clear();
+            CalculationService.Research.Clear();
+            CalculationService.Resources.Clear();
+            await CalculationService.SaveStateAsync();
+            RefreshRankings();
+        }
+
+        // Clear current user ID from LocalStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "userId");
+        hasUserId = false;
+        currentUserId = null;
+
+        // Open dialog with empty user ID to create new profile
+        var parameters = new DialogParameters
+        {
+            ["LocalStorageService"] = LocalStorageService,
+            ["CurrentUserId"] = null
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UserIdDialog>("Create New User Profile", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            hasUserId = await LocalStorageService.HasUserIdAsync();
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+            
+            // Load user data from cloud based on username
+            if (hasUserId && !string.IsNullOrEmpty(currentUserId))
+            {
+                await LoadUserDataFromCloud();
+            }
+            else if (keepCurrentData)
+            {
+                // If user kept current data and no cloud data exists, save current data to cloud
+                await CalculationService.SaveStateAsync();
+            }
+            
+            Snackbar.Add("New user profile created successfully", Severity.Success);
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUserDataFromCloud()
+    {
+        try
+        {
+            // Reload state from cloud (which will load from cloud if user ID is set)
+            await CalculationService.LoadStateAsync();
+            RefreshRankings();
+            _lastTotalProduction = CalculationService.GetTotalProduction();
+            Snackbar.Add("User data loaded from cloud", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data from cloud: {ex.Message}", Severity.Warning);
         }
     }
 
