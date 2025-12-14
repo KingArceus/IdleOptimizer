@@ -1087,25 +1087,24 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
 
     public async Task SaveStateAsync()
     {
+        // Save to local storage first
         await _localStorage.SaveGeneratorsAsync(Generators);
         await _localStorage.SaveResearchAsync(Research);
         await _localStorage.SaveResourcesAsync(Resources);
         
-        // Sync to cloud if user ID is set (fire-and-forget)
-        _ = Task.Run(async () =>
+        // Save to cloud through API if user ID is set
+        try
         {
-            try
+            if (await _localStorage.HasUserIdAsync())
             {
-                if (await _localStorage.HasUserIdAsync())
-                {
-                    await _localStorage.SyncToCloudAsync(Generators, Research, Resources);
-                }
+                await _localStorage.SyncToCloudAsync(Generators, Research, Resources);
             }
-            catch
-            {
-                // Ignore errors in background sync
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't throw - local save succeeded
+            Console.WriteLine($"Error saving to cloud: {ex.Message}");
+        }
     }
 
     public async Task LoadStateAsync()
