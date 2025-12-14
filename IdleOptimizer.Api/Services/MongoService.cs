@@ -37,11 +37,7 @@ public class MongoService : IMongoService
 
         // Use ReplaceOne with upsert to either update existing or insert new
         var filter = Builders<SyncData>.Filter.Eq(x => x.UserId, data.UserId);
-        _logger.LogInformation($"Saving sync data for user ID: {data.UserId}");
-        _logger.LogInformation($"Filter: {JsonSerializer.Serialize(filter)}");
-        _logger.LogInformation($"Data: {JsonSerializer.Serialize(data)}");
         await _collection.ReplaceOneAsync(filter, data, new ReplaceOptions { IsUpsert = true });
-        _logger.LogInformation($"Saved sync data for user ID: {data.UserId}");
     }
 
     public async Task<SyncData?> LoadSyncDataAsync(string userId)
