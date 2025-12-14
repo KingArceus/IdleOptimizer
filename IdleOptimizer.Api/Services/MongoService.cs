@@ -1,3 +1,4 @@
+using System.Text.Json;
 using IdleOptimizer.Api.Models;
 using MongoDB.Driver;
 
@@ -6,10 +7,11 @@ namespace IdleOptimizer.Api.Services;
 public class MongoService : IMongoService
 {
     private readonly IMongoCollection<SyncData> _collection;
+    private readonly ILogger<MongoService> _logger;
     private const string DatabaseName = "idleoptimizer";
     private const string CollectionName = "syncdata";
 
-    public MongoService(IConfiguration configuration)
+    public MongoService(IConfiguration configuration, ILogger<MongoService> logger)
     {
         // Configuration system automatically reads from appsettings.json and environment variables
         // Environment variables with double underscores (MongoDB__ConnectionString) are automatically mapped to nested config
@@ -19,7 +21,7 @@ public class MongoService : IMongoService
         var client = new MongoClient(connectionString);
         var database = client.GetDatabase(DatabaseName);
         _collection = database.GetCollection<SyncData>(CollectionName);
-
+        _logger = logger;
         // Note: Since UserId is now the _id field, we don't need a separate index
         // MongoDB automatically indexes the _id field
     }
@@ -35,7 +37,11 @@ public class MongoService : IMongoService
 
         // Use ReplaceOne with upsert to either update existing or insert new
         var filter = Builders<SyncData>.Filter.Eq(x => x.UserId, data.UserId);
+        _logger.LogInformation($"Saving sync data for user ID: {data.UserId}");
+        _logger.LogInformation($"Filter: {JsonSerializer.Serialize(filter)}");
+        _logger.LogInformation($"Data: {JsonSerializer.Serialize(data)}");
         await _collection.ReplaceOneAsync(filter, data, new ReplaceOptions { IsUpsert = true });
+        _logger.LogInformation($"Saved sync data for user ID: {data.UserId}");
     }
 
     public async Task<SyncData?> LoadSyncDataAsync(string userId)

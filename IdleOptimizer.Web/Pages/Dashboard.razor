@@ -1582,6 +1582,10 @@
 
         if (!result.Canceled)
         {
+            // Update hasUserId and currentUserId to reflect the newly set user ID
+            hasUserId = await LocalStorageService.HasUserIdAsync();
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+            
             await CalculationService.SaveStateAsync();
 
             Snackbar.Add("New user profile created successfully", Severity.Success);

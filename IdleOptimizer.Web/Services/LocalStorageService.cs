@@ -539,7 +539,6 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 Resources = resources,
                 LastModified = DateTime.UtcNow
             };
-
             var response = await _httpClient.PostAsJsonAsync("/api/sync/save", syncData);
             response.EnsureSuccessStatusCode();
         }
