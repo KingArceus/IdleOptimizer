@@ -26,17 +26,19 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     {
         return abbr switch
         {
-            "K"  => value * 1e3,
-            "M"  => value * 1e6,
-            "B"  => value * 1e9,
-            "T"  => value * 1e12,
-            "Qa" => value * 1e15,
-            "Qi" => value * 1e18,
-            "Sx" => value * 1e21,
-            "Sp" => value * 1e24,
-            "Oc" => value * 1e27,
-            "No" => value * 1e30,
-            _    => value
+            "K"   => value * 1e3,
+            "M"   => value * 1e6,
+            "B"   => value * 1e9,
+            "T"   => value * 1e12,
+            "Qa"  => value * 1e15,
+            "Qi"  => value * 1e18,
+            "Sx"  => value * 1e21,
+            "Sp"  => value * 1e24,
+            "Oc"  => value * 1e27,
+            "No"  => value * 1e30,
+            "Dc"  => value * 1e33,
+            "Udc" => value * 1e36,
+            _     => value
         };
     }
 

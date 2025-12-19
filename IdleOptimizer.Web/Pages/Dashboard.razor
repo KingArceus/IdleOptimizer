@@ -183,6 +183,8 @@
                                                                 <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                                                 <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
                                                                 <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
                                                             </MudSelect>
                                                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                                      OnClick="() => RemoveEditResource(generator, resource)">
@@ -284,6 +286,9 @@
                                             <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
                                             <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                             <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
                                         </MudSelect>
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                  OnClick="() => RemoveEditCostResource(generator, cost)">
@@ -335,6 +340,9 @@
                                             <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
                                             <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                             <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
                                         </MudSelect>
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                  OnClick="() => RemoveEditCostResource(research, cost)">
@@ -370,6 +378,8 @@
                                         <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
                                         <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
                                         <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                        <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                        <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
                                     </MudSelect>
                                 </MudStack>
                                 
@@ -622,7 +632,22 @@
                             double baseValue = value;
                             
                             // Determine abbreviation from value and calculate base value
-                            if (value >= 1e27 && value % 1e27 < 1e24)
+                            if (value >= 1e36 && value % 1e36 < 1e33)
+                            {
+                                abbr = "Udc";
+                                baseValue = value / 1e36;
+                            }
+                            else if (value >= 1e33 && value % 1e33 < 1e30)
+                            {
+                                abbr = "Dc";
+                                baseValue = value / 1e33;
+                            }
+                            else if (value >= 1e30 && value % 1e30 < 1e27)
+                            {
+                                abbr = "No";
+                                baseValue = value / 1e30;
+                            }
+                            else if (value >= 1e27 && value % 1e27 < 1e24)
                             {
                                 abbr = "Oc";
                                 baseValue = value / 1e27;
@@ -772,7 +797,22 @@
                             double baseValue = value;
                             
                             // Determine abbreviation from value and calculate base value
-                            if (value >= 1e27 && value % 1e27 < 1e24)
+                            if (value >= 1e36 && value % 1e36 < 1e33)
+                            {
+                                abbr = "Udc";
+                                baseValue = value / 1e36;
+                            }
+                            else if (value >= 1e33 && value % 1e33 < 1e30)
+                            {
+                                abbr = "Dc";
+                                baseValue = value / 1e33;
+                            }
+                            else if (value >= 1e30 && value % 1e30 < 1e27)
+                            {
+                                abbr = "No";
+                                baseValue = value / 1e30;
+                            }
+                            else if (value >= 1e27 && value % 1e27 < 1e24)
                             {
                                 abbr = "Oc";
                                 baseValue = value / 1e27;
@@ -1134,7 +1174,15 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1e30) // Nonillion
+        if (absValue >= 1e36) // Undecillion
+        {
+            return $"{sign}{(absValue / 1e36).ToString(format)}Udc";
+        }
+        else if (absValue >= 1e33) // Decillion
+        {
+            return $"{sign}{(absValue / 1e33).ToString(format)}Dc";
+        }
+        else if (absValue >= 1e30) // Nonillion
         {
             return $"{sign}{(absValue / 1e30).ToString(format)}No";
         }
