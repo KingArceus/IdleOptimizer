@@ -63,7 +63,7 @@ public class MongoService : IMongoService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving all user IDs");
-            return new List<string>();
+            return [];
         }
     }
 }

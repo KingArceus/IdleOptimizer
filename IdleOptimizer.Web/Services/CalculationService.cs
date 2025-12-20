@@ -6,8 +6,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
 {
     private readonly ILocalStorageService _localStorage = localStorage;
     private double _lastTotalProduction = 0;
-    private const double CascadeScoreMultiplier = 10.0;
-    private Dictionary<string, double> _previousBottleneckWeights = new();
+    private Dictionary<string, double> _previousBottleneckWeights = [];
     
     public List<Generator> Generators { get; private set; } = [];
     public List<Research> Research { get; private set; } = [];
@@ -108,9 +107,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         // Update existing resources
         foreach (var resource in Resources)
         {
-            double totalProduction = productionByResource.ContainsKey(resource.Name) 
-                ? productionByResource[resource.Name] 
-                : 0;
+            double totalProduction = productionByResource.TryGetValue(resource.Name, out double production) 
+                ? production : 0;
             resource.UpdateTotalProduction(totalProduction);
         }
         
@@ -249,7 +247,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     /// <summary>
     /// Identifies the bottleneck resource (the one with maximum wait time) for a given cost.
     /// </summary>
-    private string? IdentifyBottleneckResource(Dictionary<string, double> resourceCosts, Dictionary<string, double> productionByResource)
+    private static string? IdentifyBottleneckResource(Dictionary<string, double> resourceCosts, Dictionary<string, double> productionByResource)
     {
         if (resourceCosts == null || resourceCosts.Count == 0)
             return null;
@@ -458,7 +456,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     /// Calculates effective production gain using resource values and bottleneck weights.
     /// Formula: Σ(Production increase for resourceᵢ × Resource Valueᵢ × Bottleneck Weightᵢ)
     /// </summary>
-    private double CalculateEffectiveProductionGain(
+    private static double CalculateEffectiveProductionGain(
         Dictionary<string, double> productionIncrease,
         Dictionary<string, double> resourceValues,
         Dictionary<string, double> bottleneckWeights)
@@ -489,7 +487,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
     /// Calculates effective cost using resource valuations.
     /// Formula: Σ(Cost in resourceᵢ × Resource Valueᵢ)
     /// </summary>
-    private double CalculateEffectiveCost(
+    private static double CalculateEffectiveCost(
         Dictionary<string, double> resourceCosts,
         Dictionary<string, double> resourceValues)
     {
@@ -572,7 +570,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             // Handle legacy costs
             if (effectiveCosts == null || effectiveCosts.Count == 0)
             {
-                effectiveCosts = new Dictionary<string, double>();
+                effectiveCosts = [];
                 double totalProduction = currentProductionByResource.Values.Sum();
                 foreach (var resource in currentProductionByResource)
                 {
@@ -636,7 +634,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         return cascadeMultiplier;
     }
     
-    private double CalculateTimeToAffordWithResourceCosts(Dictionary<string, double> resourceCosts, Dictionary<string, double> productionByResource)
+    private static double CalculateTimeToAffordWithResourceCosts(Dictionary<string, double> resourceCosts, Dictionary<string, double> productionByResource)
     {
         if (resourceCosts == null || resourceCosts.Count == 0)
             return double.MaxValue;
@@ -689,7 +687,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             BaseProduction = g.BaseProduction,
             Count = g.Count + purchaseAmount,
             Cost = g.Cost,
-            Resources = g.Resources != null ? new Dictionary<string, double>(g.Resources) : new Dictionary<string, double>()
+            Resources = g.Resources != null ? new Dictionary<string, double>(g.Resources) : []
         };
         
         // Calculate production per resource separately (do not sum different resources)
@@ -771,7 +769,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         if (effectiveGain > 0)
         {
             // Use effective cost for payback calculation
-            double effectiveCost = CalculateEffectiveCost(g.ResourceCosts ?? new Dictionary<string, double>(), resourceValues);
+            double effectiveCost = CalculateEffectiveCost(g.ResourceCosts ?? [], resourceValues);
             if (effectiveCost > 0)
             {
                 timeToPayback = effectiveCost / effectiveGain;
@@ -877,7 +875,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 // Apply multiplier to Resources if available, otherwise to BaseProduction
                 if (generator.Resources != null && generator.Resources.Count > 0)
                 {
-                    generatorResources = new Dictionary<string, double>();
+                    generatorResources = [];
                     foreach (var resource in generator.Resources)
                     {
                         double newResourceProduction = resource.Value * r.GetMultiplier();
@@ -887,7 +885,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 else
                 {
                     // No resources defined - use empty dictionary
-                    generatorResources = new Dictionary<string, double>();
+                    generatorResources = [];
                 }
             }
             else
@@ -965,7 +963,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         if (effectiveGain > 0)
         {
             // Use effective cost for payback calculation
-            double effectiveCost = CalculateEffectiveCost(r.ResourceCosts ?? new Dictionary<string, double>(), resourceValues);
+            double effectiveCost = CalculateEffectiveCost(r.ResourceCosts ?? [], resourceValues);
             if (effectiveCost > 0)
             {
                 timeToPayback = effectiveCost / effectiveGain;
@@ -1268,7 +1266,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 }
                 else
                 {
-                    generator.BaseResources = new Dictionary<string, double>();
+                    generator.BaseResources = [];
                 }
             }
             
@@ -1281,7 +1279,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 }
                 else
                 {
-                    generator.BaseResourceCosts = new Dictionary<string, double>();
+                    generator.BaseResourceCosts = [];
                 }
             }
         }
@@ -1297,11 +1295,11 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             // Initialize RequiredGenerators and RequiredResearch if null
             if (research.RequiredGenerators == null)
             {
-                research.RequiredGenerators = new List<string>();
+                research.RequiredGenerators = [];
             }
             if (research.RequiredResearch == null)
             {
-                research.RequiredResearch = new List<string>();
+                research.RequiredResearch = [];
             }
             // IsUnlocked defaults to true, will be evaluated when GetRankedUpgrades() is called
         }
@@ -1311,11 +1309,11 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         {
             if (generator.RequiredGenerators == null)
             {
-                generator.RequiredGenerators = new List<string>();
+                generator.RequiredGenerators = [];
             }
             if (generator.RequiredResearch == null)
             {
-                generator.RequiredResearch = new List<string>();
+                generator.RequiredResearch = [];
             }
             // IsUnlocked defaults to true, will be evaluated when GetRankedUpgrades() is called
         }
@@ -1388,7 +1386,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             }
             else
             {
-                generator.Resources = new Dictionary<string, double>();
+                generator.Resources = [];
             }
             
             // Reset ResourceCosts to a copy of the new BaseResourceCosts
@@ -1398,7 +1396,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             }
             else
             {
-                generator.ResourceCosts = new Dictionary<string, double>();
+                generator.ResourceCosts = [];
             }
         }
         

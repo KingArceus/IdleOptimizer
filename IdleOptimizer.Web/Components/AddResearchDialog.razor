@@ -8,14 +8,13 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
-            <MudTextField @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            <MudTextField ShrinkLabel @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
             <MudStack Spacing="2" Class="mt-2" Row="true">
-                <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value" 
+                <MudNumericField ShrinkLabel @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value" 
                                 Variant="Variant.Outlined" Required="true" Min="0.01" />
-                <MudSelect T="string" SelectedValues="SelectedGeneratorsEnumerable" SelectedValuesChanged="@OnGeneratorsChanged"
-                          Label="Target Generators" Variant="Variant.Outlined"
-                          HelperText="Select generators to target (or 'All' for all generators)">
+                <MudSelect ShrinkLabel T="string" SelectedValues="SelectedGeneratorsEnumerable" SelectedValuesChanged="@OnGeneratorsChanged"
+                          Label="Target Generators" Variant="Variant.Outlined" >
                     <MudSelectItem Value="@("All")">All</MudSelectItem>
                     @foreach (var generator in CalculationService.Generators)
                     {
@@ -25,17 +24,15 @@
             </MudStack>
 
             <MudStack Spacing="2" Class="mt-2" Row="true">
-                <MudSelect T="string" SelectedValues="RequiredGeneratorsEnumerable" SelectedValuesChanged="@OnRequiredGeneratorsChanged"
-                          Label="Required Generators" Variant="Variant.Outlined" MultiSelection="true" 
-                          HelperText="Select generators that must be purchased first">
+                <MudSelect ShrinkLabel T="string" SelectedValues="RequiredGeneratorsEnumerable" SelectedValuesChanged="@OnRequiredGeneratorsChanged"
+                          Label="Required Generators" Variant="Variant.Outlined" MultiSelection="true" >
                     @foreach (var generator in CalculationService.Generators)
                     {
                         <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
                     }
                 </MudSelect>
-                <MudSelect T="string" SelectedValues="RequiredResearchEnumerable" SelectedValuesChanged="@OnRequiredResearchChanged"
-                          Label="Required Research" Variant="Variant.Outlined" MultiSelection="true" 
-                          HelperText="Select research that must be applied first">
+                <MudSelect ShrinkLabel T="string" SelectedValues="RequiredResearchEnumerable" SelectedValuesChanged="@OnRequiredResearchChanged"
+                          Label="Required Research" Variant="Variant.Outlined" MultiSelection="true" >
                     @foreach (var research in CalculationService.Research)
                     {
                         <MudSelectItem Value="@research.Name">@research.Name</MudSelectItem>
@@ -44,45 +41,56 @@
             </MudStack>
 
             <MudStack Spacing="2" Class="mt-2">
-                @foreach (var cost in resourceCosts)
+                @foreach (var (cost, index) in resourceCosts.Select((cost, index) => (cost, index)))
                 {
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                 Variant="Variant.Outlined" Style="flex: 1;">
-                            @foreach (var res in CalculationService.Resources)
+                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
+                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                    Variant="Variant.Outlined" Style="flex: 1;">
+                                @foreach (var res in CalculationService.Resources)
+                                {
+                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
+                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
+                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                    Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
+                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                            </MudSelect>
+                        </MudStack>
+                        
+                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
+                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
+                                    Style="@(index == resourceCosts.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
+                                    OnClick="() => RemoveResourceCost(cost)">
+                                Remove
+                            </MudButton>
+                            @if (index == resourceCosts.Count - 1)
                             {
-                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
+                                        Style="min-height: 0;"
+                                        OnClick="AddResourceCost" Class="mt-1">
+                                    Add
+                                </MudButton>
                             }
-                        </MudSelect>
-                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
-                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                        </MudSelect>
-                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
-                                 OnClick="() => RemoveResourceCost(cost)">
-                            Remove
-                        </MudButton>
+                        </MudStack>
                     </MudStack>
                 }
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" 
-                         StartIcon="@Icons.Material.Filled.Add" OnClick="AddResourceCost" Class="mb-2">
-                    Add Resource Cost
-                </MudButton>
             </MudStack>
         </MudForm>
     </DialogContent>
@@ -118,9 +126,17 @@
 
     private List<ResourceCostEntry> resourceCosts = new();
 
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
+        resourceCosts.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
+    }
+
     private void AddResourceCost()
     {
-        resourceCosts.Add(new ResourceCostEntry { ResourceName = null, Value = 0 });
+        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
+        resourceCosts.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
     }
 
     private void RemoveResourceCost(ResourceCostEntry cost)

@@ -213,7 +213,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             var resourcesStr = UnescapeCsvField(fields[2]);
             if (!string.IsNullOrEmpty(resourcesStr))
             {
-                generator.Resources = new Dictionary<string, double>();
+                generator.Resources = [];
                 var resourcePairs = resourcesStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
                 foreach (var pair in resourcePairs)
                 {
@@ -229,7 +229,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             generator.Cost = double.TryParse(fields[4], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
             
             // Parse resource costs - always initialize the dictionary
-            generator.ResourceCosts = new Dictionary<string, double>();
+            generator.ResourceCosts = [];
             var resourceCostsStr = UnescapeCsvField(fields[5]);
             if (!string.IsNullOrEmpty(resourceCostsStr))
             {
@@ -275,7 +275,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             researchItem.Cost = double.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
             
             // Parse resource costs - always initialize the dictionary
-            researchItem.ResourceCosts = new Dictionary<string, double>();
+            researchItem.ResourceCosts = [];
             var resourceCostsStr = UnescapeCsvField(fields[3]);
             if (!string.IsNullOrEmpty(resourceCostsStr))
             {
@@ -339,7 +339,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return resources;
     }
 
-    private List<string> ParseCsvLine(string line)
+    private static List<string> ParseCsvLine(string line)
     {
         var fields = new List<string>();
         var currentField = new StringBuilder();
@@ -378,7 +378,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return fields;
     }
 
-    private string EscapeCsvField(string field)
+    private static string EscapeCsvField(string field)
     {
         if (string.IsNullOrEmpty(field)) return string.Empty;
         
@@ -391,7 +391,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return field;
     }
 
-    private string UnescapeCsvField(string field)
+    private static string UnescapeCsvField(string field)
     {
         if (string.IsNullOrEmpty(field)) return string.Empty;
         
@@ -526,13 +526,13 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             var response = await _httpClient.GetAsync("/api/sync/users");
             response.EnsureSuccessStatusCode();
             var userIds = await response.Content.ReadFromJsonAsync<List<string>>();
-            return userIds ?? new List<string>();
+            return userIds ?? [];
         }
         catch (Exception ex)
         {
             // Log error, return empty list on failure
             Console.WriteLine($"Error retrieving all user IDs: {ex.Message}");
-            return new List<string>();
+            return [];
         }
     }
 
