@@ -1,6 +1,13 @@
 @using MudBlazor
+@using IdleOptimizer.Services
+@using Microsoft.AspNetCore.Components
 @inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
+@inject ILocalStorageService LocalStorageService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ICalculationService CalculationService
+@inject NavigationManager NavigationManager
 
 <MudThemeProvider Theme="@theme" />
 <MudDialogProvider />
@@ -10,6 +17,34 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
         <MudText Typo="Typo.h6">Idle Game Optimizer</MudText>
         <MudSpacer />
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Style="margin-right: 8px;">
+            <MudSelect T="string" Value="@selectedUserId" 
+                       ValueChanged="@OnUserSelected"
+                       Variant="Variant.Text" 
+                       Margin="Margin.Dense"
+                       Color="Color.Info"
+                       StartAdornment="@Icons.Material.Filled.AccountCircle"
+                       Style="min-width: 100px;">
+                @if (allUserIds.Count > 0)
+                {
+                    @foreach (var userId in allUserIds)
+                    {
+                        <MudSelectItem Value="@userId">@userId</MudSelectItem>
+                    }
+                }
+                else
+                {
+                    @if (!string.IsNullOrEmpty(selectedUserId))
+                    {
+                        <MudSelectItem Value="@selectedUserId">@selectedUserId</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+
+            <MudIconButton Icon="@Icons.Material.Filled.PersonAdd" 
+                           Color="Color.Success" 
+                           OnClick="CreateNewUserProfile" />
+        </MudStack>
         <MudIconButton Icon="@(isDarkTheme ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" 
                        Color="Color.Inherit" 
                        OnClick="ToggleTheme"
@@ -23,11 +58,27 @@
 @code {
     private bool isDarkTheme = true;
     private MudTheme theme = new();
+    private bool hasUserId = false;
+    private string? currentUserId = null;
+    private List<string> allUserIds = new();
+    private string? selectedUserId = null;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadThemePreference();
         UpdateTheme();
+        
+        // Check for user ID in LocalStorage first
+        hasUserId = await LocalStorageService.HasUserIdAsync();
+        if (hasUserId)
+        {
+            // User ID exists in LocalStorage, load it
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+            selectedUserId = currentUserId;
+        }
+        
+        // Load all user IDs from API
+        await LoadAllUserIds();
     }
 
     private async Task LoadThemePreference()
@@ -121,6 +172,144 @@
         catch
         {
             // Ignore save errors
+        }
+    }
+
+    private async Task LoadAllUserIds()
+    {
+        try
+        {
+            allUserIds = await LocalStorageService.GetAllUserIdsAsync();
+            
+            // If current user is not in the list, add it
+            if (!string.IsNullOrEmpty(currentUserId) && !allUserIds.Contains(currentUserId))
+            {
+                allUserIds.Add(currentUserId);
+                allUserIds = allUserIds.OrderBy(id => id).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // On error, at least show current user if available
+            if (!string.IsNullOrEmpty(currentUserId) && !allUserIds.Contains(currentUserId))
+            {
+                allUserIds = new List<string> { currentUserId };
+            }
+            Console.WriteLine($"Error loading user IDs: {ex.Message}");
+        }
+    }
+
+    private async Task OnUserSelected(string? userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            selectedUserId = null;
+            return;
+        }
+
+        // Always update selectedUserId to keep UI in sync
+        selectedUserId = userId;
+
+        // If selecting the same user, no need to reload
+        if (userId == currentUserId)
+        {
+            return;
+        }
+
+        try
+        {
+            // Update local storage with selected user ID
+            await LocalStorageService.SetUserIdAsync(userId);
+            
+            // Update state
+            hasUserId = true;
+            currentUserId = userId;
+            
+            // Load user data from cloud
+            await LoadUserDataFromCloud();
+            
+            Snackbar.Add($"Switched to user profile: {userId}", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error switching user profile: {ex.Message}", Severity.Error);
+            // Revert to previous user on error
+            selectedUserId = currentUserId;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CreateNewUserProfile()
+    {
+        // Ask if user wants to keep current data for new user profile
+        var keepDataOptions = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var keepDataDialog = await DialogService.ShowAsync<KeepDataForNewProfileDialog>("Create New User Profile", keepDataOptions);
+        var keepDataResult = await keepDataDialog.Result;
+
+        if (keepDataResult.Canceled)
+        {
+            return; // User cancelled
+        }
+
+        var keepCurrentData = keepDataResult.Data is bool keepData && keepData;
+
+        // If user chose to clear data, clear all current data
+        if (!keepCurrentData)
+        {
+            CalculationService.Generators.Clear();
+            CalculationService.Research.Clear();
+            CalculationService.Resources.Clear();
+            await CalculationService.SaveStateAsync();
+        }
+
+        // Clear current user ID from LocalStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "userId");
+        hasUserId = false;
+        currentUserId = null;
+
+        // Open dialog with empty user ID to create new profile
+        var parameters = new DialogParameters
+        {
+            ["LocalStorageService"] = LocalStorageService,
+            ["CurrentUserId"] = null
+        };
+
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UserIdDialog>("Create New User Profile", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            // Update hasUserId and currentUserId to reflect the newly set user ID
+            hasUserId = await LocalStorageService.HasUserIdAsync();
+            currentUserId = await LocalStorageService.GetUserIdAsync();
+            selectedUserId = currentUserId;
+            
+            // Refresh user list to include the new user
+            await LoadAllUserIds();
+            
+            await CalculationService.SaveStateAsync();
+
+            Snackbar.Add("New user profile created successfully", Severity.Success);
+            // Force page refresh to update Dashboard
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        }
+    }
+
+    private async Task LoadUserDataFromCloud()
+    {
+        try
+        {
+            // Reload state from cloud (which will load from cloud if user ID is set)
+            await CalculationService.LoadStateAsync();
+            Snackbar.Add("User data loaded from cloud", Severity.Info);
+            // Force page refresh to update Dashboard
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading data from cloud: {ex.Message}", Severity.Warning);
         }
     }
 }

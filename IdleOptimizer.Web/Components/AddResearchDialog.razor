@@ -14,7 +14,7 @@
                 <MudNumericField @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value" 
                                 Variant="Variant.Outlined" Required="true" Min="0.01" />
                 <MudSelect T="string" SelectedValues="SelectedGeneratorsEnumerable" SelectedValuesChanged="@OnGeneratorsChanged"
-                          Label="Target Generators" Variant="Variant.Outlined" MultiSelection="true" 
+                          Label="Target Generators" Variant="Variant.Outlined"
                           HelperText="Select generators to target (or 'All' for all generators)">
                     <MudSelectItem Value="@("All")">All</MudSelectItem>
                     @foreach (var generator in CalculationService.Generators)

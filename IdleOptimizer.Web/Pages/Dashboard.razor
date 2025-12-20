@@ -14,38 +14,6 @@
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudCard>
         <MudCardContent>
-            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-                <MudText Typo="Typo.h4">Idle Game Optimizer</MudText>
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudSelect T="string" Value="@selectedUserId" 
-                                   ValueChanged="@OnUserSelected"
-                                   Variant="Variant.Outlined" 
-                                   Color="Color.Info"
-                                   Label="User Profile"
-                                   StartAdornment="@Icons.Material.Filled.AccountCircle"
-                                   Style="min-width: 200px;">
-                            @if (allUserIds.Count > 0)
-                            {
-                                @foreach (var userId in allUserIds)
-                                {
-                                    <MudSelectItem Value="@userId">@userId</MudSelectItem>
-                                }
-                            }
-                            else
-                            {
-                                @if (!string.IsNullOrEmpty(selectedUserId))
-                                {
-                                    <MudSelectItem Value="@selectedUserId">@selectedUserId</MudSelectItem>
-                                }
-                            }
-                        </MudSelect>
-
-                        <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.PersonAdd" 
-                           OnClick="CreateNewUserProfile">
-                            <span> New User Profile</span>
-                        </MudButton>
-                </MudStack>
-            </MudStack>
             @if (CalculationService.Resources.Count > 0)
             {
                 <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
@@ -76,38 +44,36 @@
                 <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
             }
 
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
-                       OnClick="OpenAddGeneratorDialog" Class="mb-2 mr-2">
-                Add Generator
-            </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
-                       OnClick="OpenAddResearchDialog" Class="mb-2 mr-2">
-                Add Research
-            </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" 
-                       OnClick="OpenAddResourceDialog" Class="mb-2">
-                Add Resource
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
-                       OnClick="RefreshRankings" Class="mb-2 ml-2">
-                Refresh Rankings
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.DeleteSweep" 
-                       OnClick="OpenDeleteAllDialog" Class="mb-2 ml-2">
-                Delete All
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Download" 
-                       OnClick="DownloadSaveFiles" Class="mb-2 ml-2">
-                Download Save Files
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Upload" 
-                       OnClick="TriggerFileInput" Class="mb-2 ml-2">
-                Import Save Files
-            </MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" 
-                       OnClick="OpenPrestigeDialog" Class="mb-2 ml-2">
-                Prestige
-            </MudButton>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+                        OnClick="OpenAddGeneratorDialog" Class="mb-2 mr-2">
+                        Generator
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
+                            OnClick="OpenAddResearchDialog" Class="mb-2 mr-2">
+                        Research
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" 
+                            OnClick="OpenAddResourceDialog" Class="mb-2">
+                        Resource
+                    </MudButton>
+                </MudStack>
+
+                <MudSpacer />
+                
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
+                        OnClick="RefreshRankings" Class="mb-2 ml-2">
+                        Refresh
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" 
+                            OnClick="OpenPrestigeDialog" Class="mb-2 ml-2">
+                        Prestige
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+            
             <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
 
             <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
@@ -500,7 +466,26 @@
                     </MudTd>
                 </RowTemplate>
                 <PagerContent>
-                    <MudTablePager />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+                        <MudTablePager />
+                        <MudStack Row="true" Spacing="2" Style="margin-right: 16px;">
+                            <MudIconButton Icon="@Icons.Material.Filled.Download" 
+                                           Color="Color.Success" 
+                                           Variant="Variant.Outlined"
+                                           OnClick="DownloadSaveFiles" 
+                                           Size="Size.Small" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Upload" 
+                                           Color="Color.Warning" 
+                                           Variant="Variant.Outlined"
+                                           OnClick="TriggerFileInput" 
+                                           Size="Size.Small" />
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" 
+                                           Color="Color.Error" 
+                                           Variant="Variant.Outlined" 
+                                           OnClick="OpenDeleteAllDialog" 
+                                           Size="Size.Small" />
+                        </MudStack>
+                    </MudStack>
                 </PagerContent>
             </MudTable>
         </MudCardContent>
@@ -516,10 +501,6 @@
     private const double ProductionPerSecond = 1.0; // Production rate per second
     private string? editCostAbbr = null;
     private InputFile fileInputElement = default!;
-    private bool hasUserId = false;
-    private string? currentUserId = null;
-    private List<string> allUserIds = new();
-    private string? selectedUserId = null;
     private class ResourceEntry
     {
         public string? ResourceName { get; set; }
@@ -541,20 +522,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Check for user ID in LocalStorage first
-        hasUserId = await LocalStorageService.HasUserIdAsync();
-        if (hasUserId)
-        {
-            // User ID exists in LocalStorage, load it
-            currentUserId = await LocalStorageService.GetUserIdAsync();
-            selectedUserId = currentUserId;
-            // LoadStateAsync in InitializeAsync will automatically load from cloud if user ID is set
-        }
-        // Do not show dialog if user ID already exists in LocalStorage
-        
-        // Load all user IDs from API
-        await LoadAllUserIds();
-        
         await CalculationService.InitializeAsync();
         RefreshRankings();
         _lastTotalProduction = CalculationService.GetTotalProduction();
@@ -1601,202 +1568,6 @@
             int minutes = seconds / 60;
             int secs = seconds % 60;
             return $"{minutes}m {secs}s";
-        }
-    }
-
-    private async Task LoadAllUserIds()
-    {
-        try
-        {
-            allUserIds = await LocalStorageService.GetAllUserIdsAsync();
-            
-            // If current user is not in the list, add it
-            if (!string.IsNullOrEmpty(currentUserId) && !allUserIds.Contains(currentUserId))
-            {
-                allUserIds.Add(currentUserId);
-                allUserIds = allUserIds.OrderBy(id => id).ToList();
-            }
-        }
-        catch (Exception ex)
-        {
-            // On error, at least show current user if available
-            if (!string.IsNullOrEmpty(currentUserId) && !allUserIds.Contains(currentUserId))
-            {
-                allUserIds = new List<string> { currentUserId };
-            }
-            Console.WriteLine($"Error loading user IDs: {ex.Message}");
-        }
-    }
-
-    private async Task OnUserSelected(string? userId)
-    {
-        if (string.IsNullOrEmpty(userId))
-        {
-            selectedUserId = null;
-            return;
-        }
-
-        // Always update selectedUserId to keep UI in sync
-        selectedUserId = userId;
-
-        // If selecting the same user, no need to reload
-        if (userId == currentUserId)
-        {
-            return;
-        }
-
-        try
-        {
-            // Update local storage with selected user ID
-            await LocalStorageService.SetUserIdAsync(userId);
-            
-            // Update state
-            hasUserId = true;
-            currentUserId = userId;
-            
-            // Load user data from cloud
-            await LoadUserDataFromCloud();
-            
-            Snackbar.Add($"Switched to user profile: {userId}", Severity.Success);
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error switching user profile: {ex.Message}", Severity.Error);
-            // Revert to previous user on error
-            selectedUserId = currentUserId;
-            StateHasChanged();
-        }
-    }
-
-    private async Task OpenUserIdDialog()
-    {
-        var currentId = await LocalStorageService.GetUserIdAsync();
-        var hasExistingUserId = !string.IsNullOrEmpty(currentId);
-        
-        var parameters = new DialogParameters
-        {
-            ["LocalStorageService"] = LocalStorageService,
-            ["CurrentUserId"] = currentId
-        };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<UserIdDialog>("Set User ID", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            hasUserId = await LocalStorageService.HasUserIdAsync();
-            var newUserId = await LocalStorageService.GetUserIdAsync();
-            
-            if (hasExistingUserId)
-            {
-                // Existing username in local storage - keep current name changing logic
-                // (check for existing username on cloud and alert if overwriting)
-                // This is already handled in UserIdDialog
-                var isChangingUser = newUserId != currentId;
-                if (isChangingUser)
-                {
-                    // User changed to a different username - load data from cloud for new username
-                    await LoadUserDataFromCloud();
-                    Snackbar.Add("User ID changed and data loaded from cloud", Severity.Success);
-                }
-                else
-                {
-                    // Same username, just updated
-                    Snackbar.Add("User ID saved successfully", Severity.Success);
-                }
-            }
-            else
-            {
-                // No existing username in local storage - get user data from cloud with input username
-                if (hasUserId && !string.IsNullOrEmpty(newUserId))
-                {
-                    await LoadUserDataFromCloud();
-                    Snackbar.Add("User data loaded from cloud", Severity.Success);
-                }
-            }
-            
-            currentUserId = newUserId;
-            selectedUserId = newUserId;
-            
-            // Refresh user list to include the new/updated user
-            await LoadAllUserIds();
-            
-            StateHasChanged();
-        }
-    }
-
-    private async Task CreateNewUserProfile()
-    {
-        // Ask if user wants to keep current data for new user profile
-        var keepDataOptions = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var keepDataDialog = await DialogService.ShowAsync<KeepDataForNewProfileDialog>("Create New User Profile", keepDataOptions);
-        var keepDataResult = await keepDataDialog.Result;
-
-        if (keepDataResult.Canceled)
-        {
-            return; // User cancelled
-        }
-
-        var keepCurrentData = keepDataResult.Data is bool keepData && keepData;
-
-        // If user chose to clear data, clear all current data
-        if (!keepCurrentData)
-        {
-            CalculationService.Generators.Clear();
-            CalculationService.Research.Clear();
-            CalculationService.Resources.Clear();
-            await CalculationService.SaveStateAsync();
-            RefreshRankings();
-        }
-
-        // Clear current user ID from LocalStorage
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "userId");
-        hasUserId = false;
-        currentUserId = null;
-
-        // Open dialog with empty user ID to create new profile
-        var parameters = new DialogParameters
-        {
-            ["LocalStorageService"] = LocalStorageService,
-            ["CurrentUserId"] = null
-        };
-
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<UserIdDialog>("Create New User Profile", parameters, options);
-        var result = await dialog.Result;
-
-        if (!result.Canceled)
-        {
-            // Update hasUserId and currentUserId to reflect the newly set user ID
-            hasUserId = await LocalStorageService.HasUserIdAsync();
-            currentUserId = await LocalStorageService.GetUserIdAsync();
-            selectedUserId = currentUserId;
-            
-            // Refresh user list to include the new user
-            await LoadAllUserIds();
-            
-            await CalculationService.SaveStateAsync();
-
-            Snackbar.Add("New user profile created successfully", Severity.Success);
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadUserDataFromCloud()
-    {
-        try
-        {
-            // Reload state from cloud (which will load from cloud if user ID is set)
-            await CalculationService.LoadStateAsync();
-            RefreshRankings();
-            _lastTotalProduction = CalculationService.GetTotalProduction();
-            Snackbar.Add("User data loaded from cloud", Severity.Info);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error loading data from cloud: {ex.Message}", Severity.Warning);
         }
     }
 
