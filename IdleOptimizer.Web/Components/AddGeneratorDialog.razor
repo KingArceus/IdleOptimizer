@@ -14,52 +14,41 @@
                 @for (int index = 0; index < resources.Count; index++)
                 {
                     var resource = resources[index];
+                    var isLast = index == resources.Count - 1;
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
-                                    Variant="Variant.Outlined" Style="flex: 1;" FullWidth="true">
-                                @foreach (var res in CalculationService.Resources)
-                                {
-                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudNumericField ShrinkLabel @bind-Value="@resource.Value" Label="Production" 
-                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" FullWidth="true" />
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
-                                    Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                            </MudSelect>
-                        </MudStack>
-                        
-                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                    Style="@(index == resources.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                    OnClick="() => RemoveResource(resource)">
-                                Remove
-                            </MudButton>
-                            @if (index == resources.Count - 1)
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@resource.ResourceName" Label="Resource" FullWidth=true
+                                Variant="Variant.Outlined" Style="flex: 1;" Id="@($"generator-resource-{index}")">
+                            @foreach (var res in CalculationService.Resources)
                             {
-                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                        Style="min-height: 0;"
-                                        OnClick="AddResource" Class="mt-1">
-                                    Add
-                                </MudButton>
+                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                             }
-                        </MudStack>
+                        </MudSelect>
+                        <MudNumericField ShrinkLabel @bind-Value="@resource.Value" Label="Production" 
+                                    Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"generator-production-{index}")" />
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
+                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"generator-abbr-{index}")">
+                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                        </MudSelect>
+                        
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                   OnClick="@(isLast ? () => AddResource() : () => RemoveResource(resource))">
+                            @(isLast ? "Add" : "Remove")
+                        </MudButton>
                     </MudStack>
                 }
             </MudStack>
@@ -90,52 +79,41 @@
                 @for (int index = 0; index < resourceCosts.Count; index++)
                 {
                     var cost = resourceCosts[index];
+                    var isLast = index == resourceCosts.Count - 1;
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                    Variant="Variant.Outlined" Style="flex: 1;">
-                                @foreach (var res in CalculationService.Resources)
-                                {
-                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
-                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                    Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                            </MudSelect>
-                        </MudStack>
-                        
-                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                    Style="@(index == resourceCosts.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                    OnClick="() => RemoveResourceCost(cost)">
-                                Remove
-                            </MudButton>
-                            @if (index == resourceCosts.Count - 1)
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" FullWidth=true
+                                Variant="Variant.Outlined" Style="flex: 1;" Id="@($"generator-cost-resource-{index}")">
+                            @foreach (var res in CalculationService.Resources)
                             {
-                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                        Style="min-height: 0;"
-                                        OnClick="AddResourceCost" Class="mt-1">
-                                    Add
-                                </MudButton>
+                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                             }
-                        </MudStack>
+                        </MudSelect>
+                        <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
+                                    Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"generator-cost-value-{index}")" />
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"generator-cost-abbr-{index}")">
+                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                        </MudSelect>
+                        
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                   OnClick="@(isLast ? () => AddResourceCost() : () => RemoveResourceCost(cost))">
+                            @(isLast ? "Add" : "Remove")
+                        </MudButton>
                     </MudStack>
                 }
             </MudStack>
@@ -195,7 +173,11 @@
 
     private void RemoveResource(ResourceEntry resource)
     {
-        resources.Remove(resource);
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (resources.Count > 1)
+        {
+            resources.Remove(resource);
+        }
     }
 
     private void AddResourceCost()
@@ -206,7 +188,11 @@
 
     private void RemoveResourceCost(ResourceCostEntry cost)
     {
-        resourceCosts.Remove(cost);
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (resourceCosts.Count > 1)
+        {
+            resourceCosts.Remove(cost);
+        }
     }
 
     private void OnRequiredGeneratorsChanged(IEnumerable<string> values)
@@ -287,4 +273,3 @@
         MudDialog.Cancel();
     }
 }
-

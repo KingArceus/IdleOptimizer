@@ -130,53 +130,42 @@
                                     @for (int index = 0; index < editResources.Count; index++)
                                     {
                                         var resource = editResources[index];
+                                        var isLast = index == editResources.Count - 1;
                                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                            <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                                                <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
-                                                           Variant="Variant.Outlined" Style="flex: 1;">
-                                                    <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
-                                                    @foreach (var res in CalculationService.Resources)
-                                                    {
-                                                        <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                                    }
-                                                </MudSelect>
-                                                <MudNumericField @bind-Value="@resource.Value" Label="Production" 
-                                                               Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                                                <MudSelect T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
-                                                         Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                                    <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                                    <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                                    <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                                    <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                                    <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                                    <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                                    <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                                </MudSelect>
-                                            </MudStack>
-                                            
-                                            <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                                      Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                                        Style="@(index == editResources.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                                        OnClick="() => RemoveEditResource(generator, resource)">
-                                                    Remove
-                                                </MudButton>
-                                                @if (index == editResources.Count - 1)
+                                            <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
+                                                       Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-resource-name-{generator.Name}-{index}")">
+                                                <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                                @foreach (var res in CalculationService.Resources)
                                                 {
-                                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                                            Style="min-height: 0;"
-                                                            OnClick="() => AddEditResource(generator)" Class="mt-1">
-                                                        Add
-                                                    </MudButton>
+                                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                                                 }
-                                            </MudStack>
+                                            </MudSelect>
+                                            <MudNumericField @bind-Value="@resource.Value" Label="Production" 
+                                                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-resource-value-{generator.Name}-{index}")" />
+                                            <MudSelect T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
+                                                     Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-resource-abbr-{generator.Name}-{index}")">
+                                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                                <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                                <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                                <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                                <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                                <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                                            </MudSelect>
+                                            
+                                            <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                                       Color="@(isLast ? Color.Primary : Color.Error)"
+                                                       Style="height: 50px; width: 50px; margin-top: 3px;"
+                                                       OnClick="@(isLast ? () => AddEditResource(generator) : () => RemoveEditResource(generator, resource))">
+                                                @(isLast ? "Add" : "Remove")
+                                            </MudButton>
                                         </MudStack>
                                     }
                                     <MudNumericField @bind-Value="@editItem.Count"
@@ -227,7 +216,7 @@
                                 @foreach (var target in research.TargetGenerators)
                                 {
                                     <div class="mb-1">
-                                        @target <span style="color: #4caf50; font-weight: bold;">(x@((research.MultiplierValue ).ToString()))</span>
+                                        @target <span style="color: #4caf50; font-weight: bold;">(x@(research.GetMultiplier(target).ToString("F2")))</span>
                                     </div>
                                 }
                             }
@@ -247,53 +236,42 @@
                                 @for (int index = 0; index < editCostResources.Count; index++)
                                 {
                                     var cost = editCostResources[index];
+                                    var isLast = index == editCostResources.Count - 1;
                                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                                            <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                                     Variant="Variant.Outlined" Style="flex: 1;">
-                                                <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
-                                                @foreach (var res in CalculationService.Resources)
-                                                {
-                                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                            <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
-                                                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                                            <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                                     Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                            </MudSelect>
-                                        </MudStack>
-                                        
-                                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                                    Style="@(index == editCostResources.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                                    OnClick="() => RemoveEditCostResource(generator, cost)">
-                                                Remove
-                                            </MudButton>
-                                            @if (index == editCostResources.Count - 1)
+                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                                 Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-cost-resource-{generator.Name}-{index}")">
+                                            <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                                            @foreach (var res in CalculationService.Resources)
                                             {
-                                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                                        Style="min-height: 0;"
-                                                        OnClick="() => AddEditCostResource(generator)" Class="mt-1">
-                                                    Add
-                                                </MudButton>
+                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                                             }
-                                        </MudStack>
+                                        </MudSelect>
+                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-cost-value-{generator.Name}-{index}")" />
+                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-cost-abbr-{generator.Name}-{index}")">
+                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                                        </MudSelect>
+                                        
+                                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                                   OnClick="@(isLast ? () => AddEditCostResource(generator) : () => RemoveEditCostResource(generator, cost))">
+                                            @(isLast ? "Add" : "Remove")
+                                        </MudButton>
                                     </MudStack>
                                 }
                                 <MudNumericField Value="@GetOrCreateEditCostRatio(generator)"
@@ -315,52 +293,41 @@
                                 @for (int index = 0; index < editResearchCostResources.Count; index++)
                                 {
                                     var cost = editResearchCostResources[index];
+                                    var isLast = index == editResearchCostResources.Count - 1;
                                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                                            <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                                     Variant="Variant.Outlined" Style="flex: 1;">
-                                                @foreach (var res in CalculationService.Resources)
-                                                {
-                                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                            <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
-                                                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                                            <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                                     Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                            </MudSelect>
-                                        </MudStack>
-                                        
-                                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                                    Style="@(index == editResearchCostResources.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                                    OnClick="() => RemoveEditCostResource(research, cost)">
-                                                Remove
-                                            </MudButton>
-                                            @if (index == editResearchCostResources.Count - 1)
+                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
+                                                 Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-research-cost-resource-{research.Name}-{index}")">
+                                            @foreach (var res in CalculationService.Resources)
                                             {
-                                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                                        Style="min-height: 0;"
-                                                        OnClick="() => AddEditCostResource(research)" Class="mt-1">
-                                                    Add
-                                                </MudButton>
+                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                                             }
-                                        </MudStack>
+                                        </MudSelect>
+                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
+                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-research-cost-value-{research.Name}-{index}")" />
+                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-research-cost-abbr-{research.Name}-{index}")">
+                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                                        </MudSelect>
+                                        
+                                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                                   OnClick="@(isLast ? () => AddEditCostResource(research) : () => RemoveEditCostResource(research, cost))">
+                                            @(isLast ? "Add" : "Remove")
+                                        </MudButton>
                                     </MudStack>
                                 }
                             </MudStack>
@@ -921,8 +888,12 @@
     private void RemoveEditResource(Generator generator, ResourceEntry resource)
     {
         var resources = GetOrCreateEditResources(generator);
-        resources.Remove(resource);
-        StateHasChanged();
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (resources.Count > 1)
+        {
+            resources.Remove(resource);
+            StateHasChanged();
+        }
     }
 
     private List<ResourceCostEntry> GetOrCreateEditCostResources(Generator generator)
@@ -945,8 +916,12 @@
     private void RemoveEditCostResource(Generator generator, ResourceCostEntry cost)
     {
         var costResources = GetOrCreateEditCostResources(generator);
-        costResources.Remove(cost);
-        StateHasChanged();
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (costResources.Count > 1)
+        {
+            costResources.Remove(cost);
+            StateHasChanged();
+        }
     }
 
     private List<ResourceCostEntry> GetOrCreateEditCostResources(Research research)
@@ -969,8 +944,12 @@
     private void RemoveEditCostResource(Research research, ResourceCostEntry cost)
     {
         var costResources = GetOrCreateEditCostResources(research);
-        costResources.Remove(cost);
-        StateHasChanged();
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (costResources.Count > 1)
+        {
+            costResources.Remove(cost);
+            StateHasChanged();
+        }
     }
 
     private double GetOrCreateEditCostRatio(Generator generator)

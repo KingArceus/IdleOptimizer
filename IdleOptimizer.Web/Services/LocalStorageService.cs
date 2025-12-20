@@ -137,7 +137,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         }
     }
 
-    private string ConvertGeneratorsToCsv(List<Generator> generators)
+    private static string ConvertGeneratorsToCsv(List<Generator> generators)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Name,BaseProduction,Resources,Count,Cost,ResourceCosts,CostRatio");
@@ -166,10 +166,10 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return sb.ToString();
     }
 
-    private string ConvertResearchToCsv(List<Research> research)
+    private static string ConvertResearchToCsv(List<Research> research)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators");
+        sb.AppendLine("Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators,TargetMultipliers");
         
         foreach (var item in research)
         {
@@ -182,13 +182,22 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             }
             
             var targetGenerators = string.Join(";", item.TargetGenerators);
-            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.MultiplierValue.ToString(CultureInfo.InvariantCulture)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{EscapeCsvField(targetGenerators)}");
+            
+            // Convert target multipliers to semicolon-separated "GeneratorName:Multiplier" pairs
+            string targetMultipliersStr = string.Empty;
+            if (item.TargetMultipliers != null && item.TargetMultipliers.Count > 0)
+            {
+                var multiplierPairs = item.TargetMultipliers.Select(m => $"{EscapeCsvField(m.Key)}:{m.Value.ToString(CultureInfo.InvariantCulture)}");
+                targetMultipliersStr = string.Join(";", multiplierPairs);
+            }
+            
+            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.MultiplierValue.ToString(CultureInfo.InvariantCulture)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{EscapeCsvField(targetGenerators)},{EscapeCsvField(targetMultipliersStr)}");
         }
         
         return sb.ToString();
     }
 
-    private List<Generator> ParseGeneratorsFromCsv(string csv)
+    private static List<Generator> ParseGeneratorsFromCsv(string csv)
     {
         var generators = new List<Generator>();
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -252,12 +261,16 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return generators;
     }
 
-    private List<Research> ParseResearchFromCsv(string csv)
+    private static List<Research> ParseResearchFromCsv(string csv)
     {
         var research = new List<Research>();
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         
         if (lines.Length < 2) return research; // Need at least header + 1 data line
+        
+        // Check header to determine format version
+        var header = lines[0].Trim();
+        bool hasTargetMultipliers = header.Contains("TargetMultipliers");
         
         for (int i = 1; i < lines.Length; i++) // Skip header
         {
@@ -269,7 +282,8 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             
             var researchItem = new Research();
             
-            // Format: Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators
+            // Format (old): Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators
+            // Format (new): Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators,TargetMultipliers
             researchItem.Name = UnescapeCsvField(fields[0]);
             researchItem.MultiplierValue = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mv) ? mv : 0;
             researchItem.Cost = double.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
@@ -295,13 +309,42 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 .ToList();
             researchItem.TargetGenerators = targetGenerators;
             
+            // Parse target multipliers (new format) or migrate from MultiplierValue (old format)
+            researchItem.TargetMultipliers = [];
+            if (hasTargetMultipliers && fields.Count > 5)
+            {
+                // New format: parse TargetMultipliers
+                var targetMultipliersStr = UnescapeCsvField(fields[5]);
+                if (!string.IsNullOrEmpty(targetMultipliersStr))
+                {
+                    var multiplierPairs = targetMultipliersStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var pair in multiplierPairs)
+                    {
+                        var parts = pair.Split(':', 2);
+                        if (parts.Length == 2 && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var multiplier))
+                        {
+                            researchItem.TargetMultipliers[parts[0]] = multiplier;
+                        }
+                    }
+                }
+            }
+            
+            // Backward compatibility: if TargetMultipliers is empty but MultiplierValue is set, migrate it
+            if (researchItem.TargetMultipliers.Count == 0 && researchItem.MultiplierValue != 0 && targetGenerators.Count > 0)
+            {
+                foreach (var generatorName in targetGenerators)
+                {
+                    researchItem.TargetMultipliers[generatorName] = researchItem.MultiplierValue;
+                }
+            }
+            
             research.Add(researchItem);
         }
         
         return research;
     }
 
-    private string ConvertResourcesToCsv(List<Resource> resources)
+    private static string ConvertResourcesToCsv(List<Resource> resources)
     {
         var sb = new StringBuilder();
         sb.AppendLine("Name");
@@ -314,7 +357,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         return sb.ToString();
     }
 
-    private List<Resource> ParseResourcesFromCsv(string csv)
+    private static List<Resource> ParseResourcesFromCsv(string csv)
     {
         var resources = new List<Resource>();
         var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -620,4 +663,3 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         }
     }
 }
-

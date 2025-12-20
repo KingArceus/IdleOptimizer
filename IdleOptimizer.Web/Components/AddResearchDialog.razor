@@ -10,17 +10,31 @@
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
             <MudTextField ShrinkLabel @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
-            <MudStack Spacing="2" Class="mt-2" Row="true">
-                <MudNumericField ShrinkLabel @bind-Value="@newResearch.MultiplierValue" Label="Multiplier Value" 
-                                Variant="Variant.Outlined" Required="true" Min="0.01" />
-                <MudSelect ShrinkLabel T="string" SelectedValues="SelectedGeneratorsEnumerable" SelectedValuesChanged="@OnGeneratorsChanged"
-                          Label="Target Generators" Variant="Variant.Outlined" >
-                    <MudSelectItem Value="@("All")">All</MudSelectItem>
-                    @foreach (var generator in CalculationService.Generators)
-                    {
-                        <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
-                    }
-                </MudSelect>
+            <MudStack Spacing="2" Class="mt-2">
+                @for (int index = 0; index < targetMultipliers.Count; index++)
+                {
+                    var target = targetMultipliers[index];
+                    var isLast = index == targetMultipliers.Count - 1;
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@target.GeneratorName" Label="Generator" FullWidth=true
+                                   Variant="Variant.Outlined" Style="flex: 1;" Id="@($"target-generator-{index}")">
+                            <MudSelectItem Value="@("All")">All</MudSelectItem>
+                            @foreach (var generator in CalculationService.Generators)
+                            {
+                                <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudNumericField ShrinkLabel @bind-Value="@target.MultiplierValue" Label="Multiplier" 
+                                         Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Required="true" Id="@($"target-multiplier-{index}")" />
+                        
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                   OnClick="@(isLast ? () => AddTargetMultiplier() : () => RemoveTargetMultiplier(target))">
+                            @(isLast ? "Add" : "Remove")
+                        </MudButton>
+                    </MudStack>
+                }
             </MudStack>
 
             <MudStack Spacing="2" Class="mt-2" Row="true">
@@ -44,52 +58,41 @@
                 @for (int index = 0; index < resourceCosts.Count; index++)
                 {
                     var cost = resourceCosts[index];
+                    var isLast = index == resourceCosts.Count - 1;
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                    Variant="Variant.Outlined" Style="flex: 1;">
-                                @foreach (var res in CalculationService.Resources)
-                                {
-                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
-                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" />
-                            <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                    Variant="Variant.Outlined" Style="width: 100px;" Dense="true">
-                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                            </MudSelect>
-                        </MudStack>
-                        
-                        <MudStack Spacing="0" AlignItems="AlignItems.Stretch" 
-                                  Style="height: 50px; display: flex; align-items: bottom; justify-content: bottom; margin-top: 0;">
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" FullWidth=true
-                                    Style="@(index == resourceCosts.Count - 1 ? "min-height: 0;" : "min-height: 0; flex: 1; height: 100%;")"
-                                    OnClick="() => RemoveResourceCost(cost)">
-                                Remove
-                            </MudButton>
-                            @if (index == resourceCosts.Count - 1)
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" FullWidth=true
+                                Variant="Variant.Outlined" Style="flex: 1;" Id="@($"research-cost-resource-{index}")">
+                            @foreach (var res in CalculationService.Resources)
                             {
-                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" FullWidth=true
-                                        Style="min-height: 0;"
-                                        OnClick="AddResourceCost" Class="mt-1">
-                                    Add
-                                </MudButton>
+                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
                             }
-                        </MudStack>
+                        </MudSelect>
+                        <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
+                                    Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"research-cost-value-{index}")" />
+                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
+                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"research-cost-abbr-{index}")">
+                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+                            <MudSelectItem Value="@("K")">K</MudSelectItem>
+                            <MudSelectItem Value="@("M")">M</MudSelectItem>
+                            <MudSelectItem Value="@("B")">B</MudSelectItem>
+                            <MudSelectItem Value="@("T")">T</MudSelectItem>
+                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
+                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
+                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
+                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
+                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
+                            <MudSelectItem Value="@("No")">No</MudSelectItem>
+                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
+                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
+                        </MudSelect>
+                        
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                                   Color="@(isLast ? Color.Primary : Color.Error)"
+                                   Style="height: 50px; width: 50px; margin-top: 3px;"
+                                   OnClick="@(isLast ? () => AddResourceCost() : () => RemoveResourceCost(cost))">
+                            @(isLast ? "Add" : "Remove")
+                        </MudButton>
                     </MudStack>
                 }
             </MudStack>
@@ -108,8 +111,6 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
 
     private Research newResearch = new();
-    private HashSet<string> selectedGenerators = new();
-    private IEnumerable<string> SelectedGeneratorsEnumerable => selectedGenerators;
     private HashSet<string> requiredGenerators = new();
     private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
     private HashSet<string> requiredResearch = new();
@@ -125,13 +126,24 @@
         public string? Abbr { get; set; }
     }
 
+    private class TargetMultiplierEntry
+    {
+        public string? GeneratorName { get; set; }
+        public double MultiplierValue { get; set; } = 1.0;
+    }
+
     private List<ResourceCostEntry> resourceCosts = new();
+    private List<TargetMultiplierEntry> targetMultipliers = new();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
         resourceCosts.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
+        
+        // Initialize with one target multiplier entry - default to "All" if generators exist
+        var defaultGenerator = CalculationService.Generators.Any() ? "All" : null;
+        targetMultipliers.Add(new TargetMultiplierEntry { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
     }
 
     private void AddResourceCost()
@@ -142,12 +154,29 @@
 
     private void RemoveResourceCost(ResourceCostEntry cost)
     {
-        resourceCosts.Remove(cost);
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (resourceCosts.Count > 1)
+        {
+            resourceCosts.Remove(cost);
+        }
     }
 
-    private void OnGeneratorsChanged(IEnumerable<string> values)
+    private void AddTargetMultiplier()
     {
-        selectedGenerators = values.ToHashSet();
+        // Default to "All" if generators exist, otherwise null
+        var defaultGenerator = CalculationService.Generators.Any() ? "All" : null;
+        targetMultipliers.Add(new TargetMultiplierEntry { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
+        StateHasChanged();
+    }
+
+    private void RemoveTargetMultiplier(TargetMultiplierEntry target)
+    {
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (targetMultipliers.Count > 1)
+        {
+            targetMultipliers.Remove(target);
+            StateHasChanged();
+        }
     }
 
     private void OnRequiredGeneratorsChanged(IEnumerable<string> values)
@@ -181,18 +210,36 @@
                     ? newResearch.ResourceCosts.Values.Sum() 
                     : 0;
                 
-                // Handle target generators
-                if (selectedGenerators.Contains("All"))
+                // Handle target generators and multipliers
+                newResearch.TargetGenerators = new List<string>();
+                newResearch.TargetMultipliers = new Dictionary<string, double>();
+                
+                foreach (var target in targetMultipliers)
                 {
-                    // If "All" is selected, include all generators
-                    newResearch.TargetGenerators = CalculationService.Generators
-                        .Select(g => g.Name)
-                        .ToList();
-                }
-                else
-                {
-                    // Otherwise, use the selected generators
-                    newResearch.TargetGenerators = selectedGenerators.ToList();
+                    if (string.IsNullOrWhiteSpace(target.GeneratorName) || target.MultiplierValue <= 0)
+                        continue;
+                    
+                    if (target.GeneratorName == "All")
+                    {
+                        // If "All" is selected, include all generators with the same multiplier
+                        foreach (var generator in CalculationService.Generators)
+                        {
+                            if (!newResearch.TargetGenerators.Contains(generator.Name))
+                            {
+                                newResearch.TargetGenerators.Add(generator.Name);
+                            }
+                            newResearch.TargetMultipliers[generator.Name] = target.MultiplierValue;
+                        }
+                    }
+                    else
+                    {
+                        // Add specific generator
+                        if (!newResearch.TargetGenerators.Contains(target.GeneratorName))
+                        {
+                            newResearch.TargetGenerators.Add(target.GeneratorName);
+                        }
+                        newResearch.TargetMultipliers[target.GeneratorName] = target.MultiplierValue;
+                    }
                 }
 
                 // Handle prerequisites
@@ -211,4 +258,3 @@
         MudDialog.Cancel();
     }
 }
-

@@ -876,9 +876,10 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 if (generator.Resources != null && generator.Resources.Count > 0)
                 {
                     generatorResources = [];
+                    double multiplier = r.GetMultiplier(generator.Name);
                     foreach (var resource in generator.Resources)
                     {
-                        double newResourceProduction = resource.Value * r.GetMultiplier();
+                        double newResourceProduction = resource.Value * multiplier;
                         generatorResources[resource.Key] = newResourceProduction * generator.Count;
                     }
                 }
@@ -1168,13 +1169,16 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 var targetGenerator = Generators.FirstOrDefault(g => g.Name == generatorName);
                 if (targetGenerator != null)
                 {
+                    // Get the multiplier for this specific generator
+                    double multiplier = research.GetMultiplier(generatorName);
+                    
                     // Apply to all resources
                     if (targetGenerator.Resources != null && targetGenerator.Resources.Count > 0)
                     {
                         var resourceKeys = targetGenerator.Resources.Keys.ToList();
                         foreach (var resourceKey in resourceKeys)
                         {
-                            targetGenerator.Resources[resourceKey] *= research.GetMultiplier();
+                            targetGenerator.Resources[resourceKey] *= multiplier;
                         }
                     }
                     // BaseProduction remains unchanged (it's calculated from BaseResources, not Resources)
