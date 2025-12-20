@@ -747,11 +747,12 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
             : 0;
-        
+
+
         // Calculate time-based efficiency metrics using resource costs
-        double timeToAfford = double.MaxValue;
-        double secondsToAdd = double.MaxValue;
-        
+        double timeToAfford;
+        double secondsToAdd;
+
         if (g.ResourceCosts != null && g.ResourceCosts.Count > 0)
         {
             // Multiple resource costs - find the bottleneck (longest time to afford)
@@ -763,8 +764,9 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             timeToAfford = double.MaxValue;
             secondsToAdd = double.MaxValue;
         }
-        
+
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
+
         double timeToPayback = double.MaxValue;
         if (effectiveGain > 0)
         {
@@ -803,8 +805,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
         const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
-        DateTime? availableAt = null;
-        
+        DateTime? availableAt;
+
         if (double.IsInfinity(secondsToAdd) || double.IsNaN(secondsToAdd))
         {
             availableAt = null; // Can't afford
@@ -843,6 +845,24 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         Dictionary<string, double> resourceValues,
         Dictionary<string, double> bottleneckWeights)
     {
+        // Skip already applied research
+        if (r.IsApplied)
+        {
+            return new UpgradeResult
+            {
+                ItemName = r.Name,
+                Type = "Research",
+                Cost = r.GetTotalCost(),
+                ResourceCosts = r.ResourceCosts != null && r.ResourceCosts.Count > 0 ? new Dictionary<string, double>(r.ResourceCosts) : null,
+                Gain = 0,
+                TimeToAfford = double.MaxValue,
+                TimeToPayback = double.MaxValue,
+                CascadeScore = 0,
+                TargetGenerators = string.Join(", ", r.TargetGenerators),
+                SourceItem = r,
+                AvailableAt = null
+            };
+        }
         
         double currentTotal = CalculateTotalProduction();
         
@@ -917,16 +937,15 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
             : 0;
-        
+
         // Calculate time-based efficiency metrics
-        double currentProductionPerSecond = currentTotal;
-        double newProductionPerSecond = newTotal;
-        
+
         // Handle multiple resource costs
+
         double totalCost = r.GetTotalCost();
-        double timeToAfford = double.MaxValue;
-        double secondsToAdd = double.MaxValue;
-        
+        double timeToAfford;
+        double secondsToAdd;
+
         if (r.ResourceCosts != null && r.ResourceCosts.Count > 0)
         {
             // Multiple resource costs - find the bottleneck (longest time to afford)
@@ -939,8 +958,9 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             timeToAfford = double.MaxValue;
             secondsToAdd = double.MaxValue;
         }
-        
+
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
+
         double timeToPayback = double.MaxValue;
         if (effectiveGain > 0)
         {
@@ -979,8 +999,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
         const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
-        DateTime? availableAt = null;
-        
+        DateTime? availableAt;
+
         if (double.IsInfinity(secondsToAdd) || double.IsNaN(secondsToAdd))
         {
             availableAt = null; // Can't afford
@@ -1015,24 +1035,108 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         };
     }
 
+    private void EvaluateUnlockStatus()
+    {
+        // Evaluate Generator unlocks
+        foreach (var generator in Generators)
+        {
+            bool isUnlocked = true;
+            
+            // Check required generators
+            if (generator.RequiredGenerators != null && generator.RequiredGenerators.Count > 0)
+            {
+                foreach (var requiredGenName in generator.RequiredGenerators)
+                {
+                    var requiredGen = Generators.FirstOrDefault(g => g.Name == requiredGenName);
+                    if (requiredGen == null || requiredGen.Count == 0)
+                    {
+                        isUnlocked = false;
+                        break;
+                    }
+                }
+            }
+            
+            // Check required research
+            if (isUnlocked && generator.RequiredResearch != null && generator.RequiredResearch.Count > 0)
+            {
+                foreach (var requiredResName in generator.RequiredResearch)
+                {
+                    var requiredRes = Research.FirstOrDefault(r => r.Name == requiredResName);
+                    if (requiredRes == null || !requiredRes.IsApplied)
+                    {
+                        isUnlocked = false;
+                        break;
+                    }
+                }
+            }
+            
+            generator.IsUnlocked = isUnlocked;
+        }
+        
+        // Evaluate Research unlocks
+        foreach (var research in Research)
+        {
+            bool isUnlocked = true;
+            
+            // Check required generators
+            if (research.RequiredGenerators != null && research.RequiredGenerators.Count > 0)
+            {
+                foreach (var requiredGenName in research.RequiredGenerators)
+                {
+                    var requiredGen = Generators.FirstOrDefault(g => g.Name == requiredGenName);
+                    if (requiredGen == null || requiredGen.Count == 0)
+                    {
+                        isUnlocked = false;
+                        break;
+                    }
+                }
+            }
+            
+            // Check required research
+            if (isUnlocked && research.RequiredResearch != null && research.RequiredResearch.Count > 0)
+            {
+                foreach (var requiredResName in research.RequiredResearch)
+                {
+                    var requiredRes = Research.FirstOrDefault(r => r.Name == requiredResName);
+                    if (requiredRes == null || !requiredRes.IsApplied)
+                    {
+                        isUnlocked = false;
+                        break;
+                    }
+                }
+            }
+            
+            research.IsUnlocked = isUnlocked;
+        }
+    }
+
     public List<UpgradeResult> GetRankedUpgrades()
     {
+        // Evaluate unlock status first
+        EvaluateUnlockStatus();
+        
         // Calculate resource valuations and bottleneck weights once for current state
         var resourceValues = CalculateResourceValuations();
         var bottleneckWeights = CalculateBottleneckWeights(_previousBottleneckWeights);
         
         var results = new List<UpgradeResult>();
         
-        // Evaluate all generators
+        // Evaluate all generators (only unlocked ones)
         foreach (var generator in Generators)
         {
-            results.Add(EvaluateGeneratorPurchase(generator, resourceValues, bottleneckWeights));
+            if (generator.IsUnlocked)
+            {
+                results.Add(EvaluateGeneratorPurchase(generator, resourceValues, bottleneckWeights));
+            }
         }
         
-        // Evaluate all research
+        // Evaluate all research (filter out already applied and locked)
         foreach (var research in Research)
         {
-            results.Add(EvaluateResearchPurchase(research, resourceValues, bottleneckWeights));
+            if (!research.IsApplied && research.IsUnlocked)
+            {
+                results.Add(EvaluateResearchPurchase(research, resourceValues, bottleneckWeights));
+            }
         }
         
         // Sort by CascadeScore descending
@@ -1060,7 +1164,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         }
         else if (upgrade.SourceItem is Research research)
         {
-            // Apply research multiplier directly to BaseProduction and Resources of affected generators
+            // Apply research multiplier to Resources (not BaseResources) of affected generators
             foreach (var generatorName in research.TargetGenerators)
             {
                 var targetGenerator = Generators.FirstOrDefault(g => g.Name == generatorName);
@@ -1075,15 +1179,17 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                             targetGenerator.Resources[resourceKey] *= research.GetMultiplier();
                         }
                     }
-                    // Also update BaseProduction for consistency
-                    targetGenerator.BaseProduction *= research.GetMultiplier();
+                    // BaseProduction remains unchanged (it's calculated from BaseResources, not Resources)
                 }
             }
             
-            // Remove the research from the list since it's been applied
-            Research.Remove(research);
+            // Mark research as applied instead of removing it
+            research.IsApplied = true;
             UpdateResourceTotalProduction();
         }
+        
+        // Re-evaluate unlock status after purchases
+        EvaluateUnlockStatus();
         
         await SaveStateAsync();
     }
@@ -1133,6 +1239,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
                 await _localStorage.SaveResearchAsync(Research);
                 await _localStorage.SaveResourcesAsync(Resources);
                 
+                // Migrate data for existing generators and research
+                MigrateData();
                 return;
             }
         }
@@ -1141,6 +1249,161 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         Generators = await _localStorage.LoadGeneratorsAsync();
         Research = await _localStorage.LoadResearchAsync();
         Resources = await _localStorage.LoadResourcesAsync();
+        
+        // Migrate data for existing generators and research
+        MigrateData();
+    }
+    
+    private void MigrateData()
+    {
+        // Initialize BaseResources and BaseResourceCosts for existing generators
+        foreach (var generator in Generators)
+        {
+            // Initialize BaseResources if not set
+            if (generator.BaseResources == null || generator.BaseResources.Count == 0)
+            {
+                if (generator.Resources != null && generator.Resources.Count > 0)
+                {
+                    generator.BaseResources = new Dictionary<string, double>(generator.Resources);
+                }
+                else
+                {
+                    generator.BaseResources = new Dictionary<string, double>();
+                }
+            }
+            
+            // Initialize BaseResourceCosts if not set
+            if (generator.BaseResourceCosts == null || generator.BaseResourceCosts.Count == 0)
+            {
+                if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+                {
+                    generator.BaseResourceCosts = new Dictionary<string, double>(generator.ResourceCosts);
+                }
+                else
+                {
+                    generator.BaseResourceCosts = new Dictionary<string, double>();
+                }
+            }
+        }
+        
+        // Initialize IsApplied for existing research
+        foreach (var research in Research)
+        {
+            if (!research.IsApplied)
+            {
+                research.IsApplied = false; // Explicitly set default
+            }
+            
+            // Initialize RequiredGenerators and RequiredResearch if null
+            if (research.RequiredGenerators == null)
+            {
+                research.RequiredGenerators = new List<string>();
+            }
+            if (research.RequiredResearch == null)
+            {
+                research.RequiredResearch = new List<string>();
+            }
+            // IsUnlocked defaults to true, will be evaluated when GetRankedUpgrades() is called
+        }
+        
+        // Initialize RequiredGenerators and RequiredResearch for existing generators
+        foreach (var generator in Generators)
+        {
+            if (generator.RequiredGenerators == null)
+            {
+                generator.RequiredGenerators = new List<string>();
+            }
+            if (generator.RequiredResearch == null)
+            {
+                generator.RequiredResearch = new List<string>();
+            }
+            // IsUnlocked defaults to true, will be evaluated when GetRankedUpgrades() is called
+        }
+    }
+    
+    public async Task PerformPrestigeAsync(double productionMultiplier, double costMultiplier)
+    {
+        // Reset all Research IsApplied to false
+        foreach (var research in Research)
+        {
+            research.IsApplied = false;
+            
+            // Multiply Research costs by cost multiplier
+            if (research.ResourceCosts != null && research.ResourceCosts.Count > 0)
+            {
+                var resourceKeys = research.ResourceCosts.Keys.ToList();
+                foreach (var resourceKey in resourceKeys)
+                {
+                    research.ResourceCosts[resourceKey] *= costMultiplier;
+                }
+            }
+            else if (research.Cost > 0)
+            {
+                research.Cost *= costMultiplier;
+            }
+        }
+        
+        // Process each Generator
+        foreach (var generator in Generators)
+        {
+            // Reset Count to 0
+            generator.Count = 0;
+            
+            // Multiply BaseResources by production multiplier
+            if (generator.BaseResources != null && generator.BaseResources.Count > 0)
+            {
+                var resourceKeys = generator.BaseResources.Keys.ToList();
+                foreach (var resourceKey in resourceKeys)
+                {
+                    generator.BaseResources[resourceKey] *= productionMultiplier;
+                }
+            }
+            
+            // Multiply BaseResourceCosts by cost multiplier
+            if (generator.BaseResourceCosts != null && generator.BaseResourceCosts.Count > 0)
+            {
+                var costKeys = generator.BaseResourceCosts.Keys.ToList();
+                foreach (var costKey in costKeys)
+                {
+                    generator.BaseResourceCosts[costKey] *= costMultiplier;
+                }
+            }
+            
+            // Recalculate BaseProduction from BaseResources
+            if (generator.BaseResources != null && generator.BaseResources.Count > 0)
+            {
+                generator.BaseProduction = generator.BaseResources.Values.Sum();
+            }
+            
+            // Recalculate Cost from BaseResourceCosts
+            if (generator.BaseResourceCosts != null && generator.BaseResourceCosts.Count > 0)
+            {
+                generator.Cost = generator.BaseResourceCosts.Values.Sum();
+            }
+            
+            // Reset Resources to a copy of the new BaseResources
+            if (generator.BaseResources != null && generator.BaseResources.Count > 0)
+            {
+                generator.Resources = new Dictionary<string, double>(generator.BaseResources);
+            }
+            else
+            {
+                generator.Resources = new Dictionary<string, double>();
+            }
+            
+            // Reset ResourceCosts to a copy of the new BaseResourceCosts
+            if (generator.BaseResourceCosts != null && generator.BaseResourceCosts.Count > 0)
+            {
+                generator.ResourceCosts = new Dictionary<string, double>(generator.BaseResourceCosts);
+            }
+            else
+            {
+                generator.ResourceCosts = new Dictionary<string, double>();
+            }
+        }
+        
+        UpdateResourceTotalProduction();
+        await SaveStateAsync();
     }
 
     public async Task ClearAllAsync()

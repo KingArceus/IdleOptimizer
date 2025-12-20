@@ -104,6 +104,10 @@
                        OnClick="TriggerFileInput" Class="mb-2 ml-2">
                 Import Save Files
             </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" 
+                       OnClick="OpenPrestigeDialog" Class="mb-2 ml-2">
+                Prestige
+            </MudButton>
             <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
 
             <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
@@ -1071,6 +1075,32 @@
                 generator.CostRatio = editCostRatios[generator];
             }
 
+            // Initialize BaseResources if not set
+            if (generator.BaseResources == null || generator.BaseResources.Count == 0)
+            {
+                if (generator.Resources != null && generator.Resources.Count > 0)
+                {
+                    generator.BaseResources = new Dictionary<string, double>(generator.Resources);
+                }
+                else
+                {
+                    generator.BaseResources = new Dictionary<string, double>();
+                }
+            }
+
+            // Initialize BaseResourceCosts if not set
+            if (generator.BaseResourceCosts == null || generator.BaseResourceCosts.Count == 0)
+            {
+                if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+                {
+                    generator.BaseResourceCosts = new Dictionary<string, double>(generator.ResourceCosts);
+                }
+                else
+                {
+                    generator.BaseResourceCosts = new Dictionary<string, double>();
+                }
+            }
+
             // Remove from edit resources, cost resources, and cost ratios
             editResources.Remove(generator);
             editCostResources.Remove(generator);
@@ -1767,6 +1797,26 @@
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading data from cloud: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task OpenPrestigeDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<PrestigeDialog>("Prestige", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data != null)
+        {
+            // Extract multipliers from tuple
+            var tuple = result.Data as (double, double)?;
+            if (tuple.HasValue)
+            {
+                var (productionMultiplier, costMultiplier) = tuple.Value;
+                await CalculationService.PerformPrestigeAsync(productionMultiplier, costMultiplier);
+                RefreshRankings();
+                Snackbar.Add($"Prestige completed! Production: {productionMultiplier}x, Cost: {costMultiplier}x", Severity.Success);
+            }
         }
     }
 

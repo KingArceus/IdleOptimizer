@@ -55,6 +55,25 @@
             <MudNumericField @bind-Value="@newGenerator.Count" Label="Initial Count" 
                             Variant="Variant.Outlined" Required="true" Min="0" Class="mt-2" />
             
+            <MudStack Spacing="2" Class="mt-2" Row="true">
+                <MudSelect T="string" SelectedValues="RequiredGeneratorsEnumerable" SelectedValuesChanged="@OnRequiredGeneratorsChanged"
+                          Label="Required Generators" Variant="Variant.Outlined" MultiSelection="true" 
+                          HelperText="Select generators that must be purchased first">
+                    @foreach (var generator in CalculationService.Generators)
+                    {
+                        <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" SelectedValues="RequiredResearchEnumerable" SelectedValuesChanged="@OnRequiredResearchChanged"
+                          Label="Required Research" Variant="Variant.Outlined" MultiSelection="true" 
+                          HelperText="Select research that must be applied first">
+                    @foreach (var research in CalculationService.Research)
+                    {
+                        <MudSelectItem Value="@research.Name">@research.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+            
             <MudStack Spacing="2" Class="mt-2">
                 @foreach (var cost in resourceCosts)
                 {
@@ -131,6 +150,10 @@
 
     private List<ResourceEntry> resources = new();
     private List<ResourceCostEntry> resourceCosts = new();
+    private HashSet<string> requiredGenerators = new();
+    private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
+    private HashSet<string> requiredResearch = new();
+    private IEnumerable<string> RequiredResearchEnumerable => requiredResearch;
 
     private void AddResource()
     {
@@ -150,6 +173,16 @@
     private void RemoveResourceCost(ResourceCostEntry cost)
     {
         resourceCosts.Remove(cost);
+    }
+
+    private void OnRequiredGeneratorsChanged(IEnumerable<string> values)
+    {
+        requiredGenerators = values.ToHashSet();
+    }
+
+    private void OnRequiredResearchChanged(IEnumerable<string> values)
+    {
+        requiredResearch = values.ToHashSet();
     }
 
     private async Task Save()
@@ -187,11 +220,25 @@
                     ? newGenerator.Resources.Values.Sum() 
                     : 0;
                 
+                // Initialize BaseResources as a copy of Resources
+                newGenerator.BaseResources = newGenerator.Resources.Count > 0
+                    ? new Dictionary<string, double>(newGenerator.Resources)
+                    : new Dictionary<string, double>();
+                
+                // Initialize BaseResourceCosts as a copy of ResourceCosts
+                newGenerator.BaseResourceCosts = newGenerator.ResourceCosts.Count > 0
+                    ? new Dictionary<string, double>(newGenerator.ResourceCosts)
+                    : new Dictionary<string, double>();
+                
                 // Set default CostRatio if not set
                 if (newGenerator.CostRatio == 0 && newGenerator.Cost > 0)
                 {
                     newGenerator.CostRatio = 1.15; // Default 15% increase
                 }
+                
+                // Handle prerequisites
+                newGenerator.RequiredGenerators = requiredGenerators.ToList();
+                newGenerator.RequiredResearch = requiredResearch.ToList();
                 
                 CalculationService.Generators.Add(newGenerator);
                 CalculationService.UpdateResourceTotalProduction();

@@ -22,5 +22,6 @@ public interface ICalculationService
     Task SaveStateAsync();
     Task LoadStateAsync();
     Task ClearAllAsync();
+    Task PerformPrestigeAsync(double productionMultiplier, double costMultiplier);
 }
 

@@ -24,6 +24,25 @@
                 </MudSelect>
             </MudStack>
 
+            <MudStack Spacing="2" Class="mt-2" Row="true">
+                <MudSelect T="string" SelectedValues="RequiredGeneratorsEnumerable" SelectedValuesChanged="@OnRequiredGeneratorsChanged"
+                          Label="Required Generators" Variant="Variant.Outlined" MultiSelection="true" 
+                          HelperText="Select generators that must be purchased first">
+                    @foreach (var generator in CalculationService.Generators)
+                    {
+                        <MudSelectItem Value="@generator.Name">@generator.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" SelectedValues="RequiredResearchEnumerable" SelectedValuesChanged="@OnRequiredResearchChanged"
+                          Label="Required Research" Variant="Variant.Outlined" MultiSelection="true" 
+                          HelperText="Select research that must be applied first">
+                    @foreach (var research in CalculationService.Research)
+                    {
+                        <MudSelectItem Value="@research.Name">@research.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
+
             <MudStack Spacing="2" Class="mt-2">
                 @foreach (var cost in resourceCosts)
                 {
@@ -82,6 +101,10 @@
     private Research newResearch = new();
     private HashSet<string> selectedGenerators = new();
     private IEnumerable<string> SelectedGeneratorsEnumerable => selectedGenerators;
+    private HashSet<string> requiredGenerators = new();
+    private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
+    private HashSet<string> requiredResearch = new();
+    private IEnumerable<string> RequiredResearchEnumerable => requiredResearch;
     private MudForm? form;
     private bool success;
     private string[] errors = { };
@@ -108,6 +131,16 @@
     private void OnGeneratorsChanged(IEnumerable<string> values)
     {
         selectedGenerators = values.ToHashSet();
+    }
+
+    private void OnRequiredGeneratorsChanged(IEnumerable<string> values)
+    {
+        requiredGenerators = values.ToHashSet();
+    }
+
+    private void OnRequiredResearchChanged(IEnumerable<string> values)
+    {
+        requiredResearch = values.ToHashSet();
     }
 
     private async Task Save()
@@ -144,6 +177,10 @@
                     // Otherwise, use the selected generators
                     newResearch.TargetGenerators = selectedGenerators.ToList();
                 }
+
+                // Handle prerequisites
+                newResearch.RequiredGenerators = requiredGenerators.ToList();
+                newResearch.RequiredResearch = requiredResearch.ToList();
 
                 CalculationService.Research.Add(newResearch);
                 await CalculationService.SaveStateAsync();
