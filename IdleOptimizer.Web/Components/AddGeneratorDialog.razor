@@ -11,8 +11,9 @@
             <MudTextField ShrinkLabel @bind-Value="@newGenerator.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
             <MudStack Spacing="2" Class="mt-2">
-                @foreach (var (resource, index) in resources.Select((resource, index) => (resource, index)))
+                @for (int index = 0; index < resources.Count; index++)
                 {
+                    var resource = resources[index];
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                         <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
                             <MudSelect ShrinkLabel T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
@@ -86,8 +87,9 @@
             </MudStack>
             
             <MudStack Spacing="2" Class="mt-2">
-                @foreach (var (cost, index) in resourceCosts.Select((cost, index) => (cost, index)))
+                @for (int index = 0; index < resourceCosts.Count; index++)
                 {
+                    var cost = resourceCosts[index];
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                         <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
                             <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" 

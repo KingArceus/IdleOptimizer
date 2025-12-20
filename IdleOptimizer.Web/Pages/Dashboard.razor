@@ -127,8 +127,9 @@
                                     @{
                                         var editResources = GetOrCreateEditResources(generator);
                                     }
-                                    @foreach (var (resource, index) in editResources.Select((resource, index) => (resource, index)))
+                                    @for (int index = 0; index < editResources.Count; index++)
                                     {
+                                        var resource = editResources[index];
                                         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                                             <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
                                                 <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
@@ -243,8 +244,9 @@
                                 @{
                                     var editCostResources = GetOrCreateEditCostResources(generator);
                                 }
-                                @foreach (var (cost, index) in editCostResources.Select((cost, index) => (cost, index)))
+                                @for (int index = 0; index < editCostResources.Count; index++)
                                 {
+                                    var cost = editCostResources[index];
                                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                                         <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
                                             <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
@@ -310,8 +312,9 @@
                                 @{
                                     var editResearchCostResources = GetOrCreateEditCostResources(research);
                                 }
-                                @foreach (var (cost, index) in editResearchCostResources.Select((cost, index) => (cost, index)))
+                                @for (int index = 0; index < editResearchCostResources.Count; index++)
                                 {
+                                    var cost = editResearchCostResources[index];
                                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                                         <MudStack Spacing="2" Row="true" AlignItems="AlignItems.Center" Class="pb-1">
                                             <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
