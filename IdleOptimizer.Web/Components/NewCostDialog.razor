@@ -38,6 +38,7 @@
                     <MudSelectItem Value="@("No")">No</MudSelectItem>
                     <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
                     <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                    <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
                 </MudSelect>
             </MudStack>
             <div class="text-caption mt-1">Formatted: @FormatNumber(EffectiveNewCost)</div>
@@ -74,7 +75,11 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1e36) // Undecillion
+        if (absValue >= 1e39) // Duodecillion
+        {
+            return $"{sign}{(absValue / 1e39).ToString(format)}Ddc";
+        }
+        else if (absValue >= 1e36) // Undecillion
         {
             return $"{sign}{(absValue / 1e36).ToString(format)}Udc";
         }

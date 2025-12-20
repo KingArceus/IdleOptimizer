@@ -38,6 +38,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
             "No"  => value * 1e30,
             "Dc"  => value * 1e33,
             "Udc" => value * 1e36,
+            "Ddc" => value * 1e39,
             _     => value
         };
     }

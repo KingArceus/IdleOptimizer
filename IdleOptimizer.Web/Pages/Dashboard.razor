@@ -185,6 +185,7 @@
                                                                 <MudSelectItem Value="@("No")">No</MudSelectItem>
                                                                 <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
                                                                 <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
                                                             </MudSelect>
                                                             <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                                      OnClick="() => RemoveEditResource(generator, resource)">
@@ -289,6 +290,7 @@
                                             <MudSelectItem Value="@("No")">No</MudSelectItem>
                                             <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
                                             <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
                                         </MudSelect>
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                  OnClick="() => RemoveEditCostResource(generator, cost)">
@@ -343,6 +345,7 @@
                                             <MudSelectItem Value="@("No")">No</MudSelectItem>
                                             <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
                                             <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
                                         </MudSelect>
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Error" 
                                                  OnClick="() => RemoveEditCostResource(research, cost)">
@@ -380,6 +383,7 @@
                                         <MudSelectItem Value="@("No")">No</MudSelectItem>
                                         <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
                                         <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
+                                        <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
                                     </MudSelect>
                                 </MudStack>
                                 
@@ -632,7 +636,12 @@
                             double baseValue = value;
                             
                             // Determine abbreviation from value and calculate base value
-                            if (value >= 1e36 && value % 1e36 < 1e33)
+                            if (value >= 1e39 && value % 1e39 < 1e36)
+                            {
+                                abbr = "Ddc";
+                                baseValue = value / 1e39;
+                            }
+                            else if (value >= 1e36 && value % 1e36 < 1e33)
                             {
                                 abbr = "Udc";
                                 baseValue = value / 1e36;
@@ -797,7 +806,12 @@
                             double baseValue = value;
                             
                             // Determine abbreviation from value and calculate base value
-                            if (value >= 1e36 && value % 1e36 < 1e33)
+                            if (value >= 1e39 && value % 1e39 < 1e36)
+                            {
+                                abbr = "Ddc";
+                                baseValue = value / 1e39;
+                            }
+                            else if (value >= 1e36 && value % 1e36 < 1e33)
                             {
                                 abbr = "Udc";
                                 baseValue = value / 1e36;
@@ -1174,7 +1188,11 @@
         string sign = value < 0 ? "-" : "";
         string format = $"F{decimals}";
 
-        if (absValue >= 1e36) // Undecillion
+        if (absValue >= 1e39) // Duodecillion
+        {
+            return $"{sign}{(absValue / 1e39).ToString(format)}Ddc";
+        }
+        else if (absValue >= 1e36) // Undecillion
         {
             return $"{sign}{(absValue / 1e36).ToString(format)}Udc";
         }
