@@ -53,7 +53,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection(); // Handled by nginx
 
 if (app.Environment.IsDevelopment())
 {
