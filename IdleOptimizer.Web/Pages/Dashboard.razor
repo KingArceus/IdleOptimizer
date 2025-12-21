@@ -438,11 +438,11 @@
                         @if (isEditing)
                         {
                             <MudButtonGroup Color="Color.Secondary" Variant="Variant.Outlined">
-                                <MudIconButton  Size="Size.Small" Variant="Variant.Filled" 
+                                <MudIconButton  Size="Size.Small" 
                                        Color="Color.Primary" 
                                        Icon="@Icons.Material.Filled.Save" 
                                        OnClick="async () => await SaveEdit(context)"/>
-                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                <MudIconButton  Size="Size.Small" 
                                        Color="Color.Default" 
                                        Icon="@Icons.Material.Filled.Refresh" 
                                        OnClick="() => CancelEdit(context)"/>
@@ -451,15 +451,15 @@
                         else
                         {
                             <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
-                                <MudIconButton  Size="Size.Small" Variant="Variant.Filled" 
+                                <MudIconButton  Size="Size.Small"
                                        Color="Color.Success" 
                                        Icon="@Icons.Material.Filled.ShoppingCart" 
                                        OnClick="async () => await ApplyPurchase(context)"/>
-                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                <MudIconButton  Size="Size.Small" 
                                        Color="Color.Info" 
                                        Icon="@Icons.Material.Filled.Edit" 
                                        OnClick="() => StartEdit(context)"/>
-                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                <MudIconButton  Size="Size.Small" 
                                        Color="Color.Error" 
                                        Icon="@Icons.Material.Filled.Delete" 
                                        OnClick="async () => await DeleteItem(context)" />
