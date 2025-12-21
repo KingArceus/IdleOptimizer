@@ -994,9 +994,11 @@
             }
         }
 
-        await CalculationService.AppliedPurchaseAsync(upgrade);
+        CalculationService.AppliedPurchase(upgrade);
         RefreshRankings();
         Snackbar.Add($"Applied purchase: {upgrade.ItemName}", Severity.Success);
+
+        await CalculationService.SaveStateAsync();
     }
 
     private async Task SaveEdit(UpgradeResult item)
@@ -1125,9 +1127,10 @@
         editItems.Remove(item.SourceItem);
 
         CalculationService.UpdateResourceTotalProduction();
-        await CalculationService.SaveStateAsync();
         RefreshRankings();
         Snackbar.Add("Item updated successfully", Severity.Success);
+
+        await CalculationService.SaveStateAsync();
     }
 
     private void CancelEdit(UpgradeResult item)
@@ -1175,9 +1178,10 @@
             CalculationService.Research.Remove(research);
         }
 
-        await CalculationService.SaveStateAsync();
         RefreshRankings();
         Snackbar.Add("Item deleted successfully", Severity.Info);
+
+        await CalculationService.SaveStateAsync();
     }
 
     private Color GetCascadeScoreColor(double cascadeScore)
@@ -1318,9 +1322,10 @@
     {
         CalculationService.RemoveResource(resource);
         CalculationService.UpdateResourceTotalProduction();
-        await CalculationService.SaveStateAsync();
         RefreshRankings();
         Snackbar.Add("Resource deleted successfully", Severity.Info);
+
+        await CalculationService.SaveStateAsync();
     }
 
     private async Task OpenDeleteAllDialog()

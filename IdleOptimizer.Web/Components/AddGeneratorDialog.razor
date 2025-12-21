@@ -262,8 +262,9 @@
                 
                 CalculationService.Generators.Add(newGenerator);
                 CalculationService.UpdateResourceTotalProduction();
-                await CalculationService.SaveStateAsync();
                 MudDialog.Close(DialogResult.Ok(true));
+
+                await CalculationService.SaveStateAsync();
             }
         }
     }

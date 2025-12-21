@@ -1142,7 +1142,7 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         return [.. results.OrderByDescending(r => r.CascadeScore)];
     }
 
-    public async Task AppliedPurchaseAsync(UpgradeResult upgrade)
+    public void AppliedPurchase(UpgradeResult upgrade)
     {
         if (upgrade.SourceItem is Generator generator)
         {
@@ -1192,8 +1192,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
         
         // Re-evaluate unlock status after purchases
         EvaluateUnlockStatus();
-        
-        await SaveStateAsync();
+
+        return;
     }
 
     public async Task SaveStateAsync()

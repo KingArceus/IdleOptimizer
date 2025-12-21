@@ -9,7 +9,7 @@ public interface ICalculationService
     List<Resource> Resources { get; }
     
     Task InitializeAsync();
-    Task AppliedPurchaseAsync(UpgradeResult upgrade);
+    void AppliedPurchase(UpgradeResult upgrade);
     List<UpgradeResult> GetRankedUpgrades();
     double GetTotalProduction();
     Dictionary<string, double> GetTotalProductionByResource();
