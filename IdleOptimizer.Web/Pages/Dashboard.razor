@@ -1582,16 +1582,28 @@
 
     private string FormatTime(int seconds)
     {
-        if (seconds < 60)
-        {
-            return $"{seconds}s";
-        }
-        else
-        {
-            int minutes = seconds / 60;
-            int secs = seconds % 60;
-            return $"{minutes}m {secs}s";
-        }
+        if (seconds < 0) return "0s";
+        
+        int weeks = seconds / (7 * 24 * 60 * 60);
+        int remaining = seconds % (7 * 24 * 60 * 60);
+        
+        int days = remaining / (24 * 60 * 60);
+        remaining = remaining % (24 * 60 * 60);
+        
+        int hours = remaining / (60 * 60);
+        remaining = remaining % (60 * 60);
+        
+        int minutes = remaining / 60;
+        int secs = remaining % 60;
+        
+        var parts = new List<string>();
+        if (weeks > 0) parts.Add($"{weeks}w");
+        if (days > 0) parts.Add($"{days}d");
+        if (hours > 0) parts.Add($"{hours}h");
+        if (minutes > 0) parts.Add($"{minutes}m");
+        if (secs > 0 || parts.Count == 0) parts.Add($"{secs}s");
+        
+        return string.Join(" ", parts);
     }
 
     private async Task OpenPrestigeDialog()
