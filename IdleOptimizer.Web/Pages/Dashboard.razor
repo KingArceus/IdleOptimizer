@@ -443,7 +443,7 @@
                                        Icon="@Icons.Material.Filled.Save" 
                                        OnClick="async () => await SaveEdit(context)"/>
                                 <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Default" 
+                                       Color="Color.Dark" 
                                        Icon="@Icons.Material.Filled.Refresh" 
                                        OnClick="() => CancelEdit(context)"/>
                             </MudButtonGroup>
@@ -456,7 +456,7 @@
                                        Icon="@Icons.Material.Filled.ShoppingCart" 
                                        OnClick="async () => await ApplyPurchase(context)"/>
                                 <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Info" 
+                                       Color="Color.Warning" 
                                        Icon="@Icons.Material.Filled.Edit" 
                                        OnClick="() => StartEdit(context)"/>
                                 <MudIconButton  Size="Size.Small" 
@@ -1582,20 +1582,23 @@
     private string FormatTime(int seconds)
     {
         if (seconds < 0) return "0s";
-        
-        int weeks = seconds / (7 * 24 * 60 * 60);
-        int remaining = seconds % (7 * 24 * 60 * 60);
-        
+        int years = seconds / (365 * 24 * 60 * 60);
+        int remaining = seconds % (365 * 24 * 60 * 60);
+
+        int weeks = remaining / (7 * 24 * 60 * 60);
+        remaining = remaining % (7 * 24 * 60 * 60);
+
         int days = remaining / (24 * 60 * 60);
         remaining = remaining % (24 * 60 * 60);
-        
+
         int hours = remaining / (60 * 60);
         remaining = remaining % (60 * 60);
-        
+
         int minutes = remaining / 60;
         int secs = remaining % 60;
-        
+
         var parts = new List<string>();
+        if (years > 0) parts.Add($"{years}y");
         if (weeks > 0) parts.Add($"{weeks}w");
         if (days > 0) parts.Add($"{days}d");
         if (hours > 0) parts.Add($"{hours}h");
