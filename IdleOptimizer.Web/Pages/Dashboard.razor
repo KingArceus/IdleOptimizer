@@ -437,34 +437,33 @@
                     <MudTd DataLabel="Actions">
                         @if (isEditing)
                         {
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" 
-                                       StartIcon="@Icons.Material.Filled.Save" 
-                                       OnClick="async () => await SaveEdit(context)" Class="mr-1">
-                                Update
-                            </MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" 
-                                       StartIcon="@Icons.Material.Filled.Refresh" 
-                                       OnClick="() => CancelEdit(context)" Class="mr-1">
-                                Cancel
-                            </MudButton>
+                            <MudButtonGroup Color="Color.Secondary" Variant="Variant.Outlined">
+                                <MudIconButton  Size="Size.Small" Variant="Variant.Filled" 
+                                       Color="Color.Primary" 
+                                       Icon="@Icons.Material.Filled.Save" 
+                                       OnClick="async () => await SaveEdit(context)"/>
+                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                       Color="Color.Default" 
+                                       Icon="@Icons.Material.Filled.Refresh" 
+                                       OnClick="() => CancelEdit(context)"/>
+                            </MudButtonGroup>
                         }
                         else
                         {
-                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Success" 
-                                       StartIcon="@Icons.Material.Filled.ShoppingCart" 
-                                       OnClick="async () => await ApplyPurchase(context)" Class="mr-1">
-                                Apply
-                            </MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" 
-                                       StartIcon="@Icons.Material.Filled.Edit" 
-                                       OnClick="() => StartEdit(context)" Class="mr-1">
-                                Edit
-                            </MudButton>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
-                                       StartIcon="@Icons.Material.Filled.Delete" 
-                                       OnClick="async () => await DeleteItem(context)">
-                                Delete
-                            </MudButton>
+                            <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+                                <MudIconButton  Size="Size.Small" Variant="Variant.Filled" 
+                                       Color="Color.Success" 
+                                       Icon="@Icons.Material.Filled.ShoppingCart" 
+                                       OnClick="async () => await ApplyPurchase(context)"/>
+                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                       Color="Color.Info" 
+                                       Icon="@Icons.Material.Filled.Edit" 
+                                       OnClick="() => StartEdit(context)"/>
+                                <MudIconButton  Size="Size.Small" Variant="Variant.Outlined" 
+                                       Color="Color.Error" 
+                                       Icon="@Icons.Material.Filled.Delete" 
+                                       OnClick="async () => await DeleteItem(context)" />
+                            </MudButtonGroup>
                         }
                     </MudTd>
                 </RowTemplate>
