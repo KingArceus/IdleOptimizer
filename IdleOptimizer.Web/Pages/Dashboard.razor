@@ -200,7 +200,7 @@
                                         var totalProduction = CalculationService.GetTotalProductionByResourceName(resources.Keys.First());
                                         var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
                                         <MudStack Row="true" Spacing="2">
-                                            <strong>@FormatNumber(generator.BaseProduction, 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
+                                            <strong>@FormatNumber(generator.Resources.Values.First(), 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
                                             <div class="text-caption" style="color: #90caf9;">
                                                 (@percentage.ToString("F1")%)
                                             </div>
