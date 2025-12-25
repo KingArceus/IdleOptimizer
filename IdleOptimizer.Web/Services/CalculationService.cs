@@ -2,9 +2,10 @@ using IdleOptimizer.Models;
 
 namespace IdleOptimizer.Services;
 
-public class CalculationService(ILocalStorageService localStorage) : ICalculationService
+public class CalculationService(ILocalStorageService localStorage, INumberFormattingService numberFormatting) : ICalculationService
 {
     private readonly ILocalStorageService _localStorage = localStorage;
+    private readonly INumberFormattingService _numberFormatting = numberFormatting;
     private double _lastTotalProduction = 0;
     private Dictionary<string, double> _previousBottleneckWeights = [];
     
@@ -23,23 +24,8 @@ public class CalculationService(ILocalStorageService localStorage) : ICalculatio
 
     public double ApplyAbbreviation(double value, string? abbr)
     {
-        return abbr switch
-        {
-            "K"   => value * 1e3,
-            "M"   => value * 1e6,
-            "B"   => value * 1e9,
-            "T"   => value * 1e12,
-            "Qa"  => value * 1e15,
-            "Qi"  => value * 1e18,
-            "Sx"  => value * 1e21,
-            "Sp"  => value * 1e24,
-            "Oc"  => value * 1e27,
-            "No"  => value * 1e30,
-            "Dc"  => value * 1e33,
-            "Udc" => value * 1e36,
-            "Ddc" => value * 1e39,
-            _     => value
-        };
+        // Delegate to formatting service for backward compatibility
+        return _numberFormatting.ApplyAbbreviation(value, abbr);
     }
 
     private double CalculateTotalProduction()

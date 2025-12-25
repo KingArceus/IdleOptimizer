@@ -11,7 +11,8 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Register services
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddMudServices();
-builder.Services.AddScoped<IdleOptimizer.Services.ILocalStorageService, LocalStorageService>();
+builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
+builder.Services.AddScoped<INumberFormattingService, NumberFormattingService>();
 builder.Services.AddScoped<ICalculationService, CalculationService>();
 
 await builder.Build().RunAsync();

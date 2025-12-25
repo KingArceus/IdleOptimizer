@@ -25,23 +25,7 @@
                         </MudSelect>
                         <MudNumericField ShrinkLabel @bind-Value="@resource.Value" Label="Production" 
                                     Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"generator-production-{index}")" />
-                        <MudSelect ShrinkLabel T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
-                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"generator-abbr-{index}")">
-                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                        </MudSelect>
+                        <AbbreviationSelect @bind-Value="@resource.Abbr" Id="@($"generator-abbr-{index}")" />
                         
                         <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                    Color="@(isLast ? Color.Primary : Color.Error)"
@@ -90,23 +74,7 @@
                         </MudSelect>
                         <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
                                     Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"generator-cost-value-{index}")" />
-                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"generator-cost-abbr-{index}")">
-                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                        </MudSelect>
+                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"generator-cost-abbr-{index}")" />
                         
                         <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                    Color="@(isLast ? Color.Primary : Color.Error)"
@@ -130,6 +98,7 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
     private Generator newGenerator = new();
     private MudForm? form;
@@ -218,7 +187,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
-                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
                         newGenerator.ResourceCosts[cost.ResourceName] = costValue;
                     }
                 }
@@ -232,7 +201,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
                     {
-                        double productionValue = CalculationService.ApplyAbbreviation(resource.Value, resource.Abbr);
+                        double productionValue = NumberFormattingService.ApplyAbbreviation(resource.Value, resource.Abbr);
                         newGenerator.Resources[resource.ResourceName] = productionValue;
                     }
                 }

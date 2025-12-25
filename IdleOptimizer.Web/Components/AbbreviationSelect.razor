@@ -1,0 +1,29 @@
+@using IdleOptimizer.Services
+@using MudBlazor
+@inject INumberFormattingService NumberFormattingService
+
+<MudSelect ShrinkLabel T="string" 
+           Value="@Value" 
+           ValueChanged="@ValueChanged"
+           Label="@Label" 
+           Variant="@Variant" 
+           Style="@Style" 
+           Dense="@Dense"
+           Id="@Id">
+    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
+    @foreach (var abbr in NumberFormattingService.GetAbbreviations())
+    {
+        <MudSelectItem Value="@abbr">@abbr</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Abbr";
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+    [Parameter] public string Style { get; set; } = "width: 100px;";
+    [Parameter] public bool Dense { get; set; } = true;
+    [Parameter] public string? Id { get; set; }
+}
+

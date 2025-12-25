@@ -18,6 +18,7 @@
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                         <MudSelect ShrinkLabel T="string" @bind-Value="@target.GeneratorName" Label="Generator" FullWidth=true
                                    Variant="Variant.Outlined" Style="flex: 1;" Id="@($"target-generator-{index}")">
+                            <MudSelectItem Value="@("None")">None</MudSelectItem>
                             <MudSelectItem Value="@("All")">All</MudSelectItem>
                             @foreach (var generator in CalculationService.Generators)
                             {
@@ -69,23 +70,7 @@
                         </MudSelect>
                         <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
                                     Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"research-cost-value-{index}")" />
-                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"research-cost-abbr-{index}")">
-                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                        </MudSelect>
+                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"research-cost-abbr-{index}")" />
                         
                         <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                    Color="@(isLast ? Color.Primary : Color.Error)"
@@ -109,6 +94,7 @@
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
     private Research newResearch = new();
     private HashSet<string> requiredGenerators = new();
@@ -202,7 +188,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
-                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
                         newResearch.ResourceCosts[cost.ResourceName] = costValue;
                     }
                 }
@@ -219,7 +205,16 @@
                     if (string.IsNullOrWhiteSpace(target.GeneratorName) || target.MultiplierValue <= 0)
                         continue;
                     
-                    if (target.GeneratorName == "All")
+                    if (target.GeneratorName == "None")
+                    {
+                        // If "None" is selected, add "None" to TargetGenerators
+                        if (!newResearch.TargetGenerators.Contains("None"))
+                        {
+                            newResearch.TargetGenerators.Add("None");
+                        }
+                        newResearch.TargetMultipliers["None"] = target.MultiplierValue;
+                    }
+                    else if (target.GeneratorName == "All")
                     {
                         // If "All" is selected, include all generators with the same multiplier
                         foreach (var generator in CalculationService.Generators)

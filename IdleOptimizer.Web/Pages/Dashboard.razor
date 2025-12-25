@@ -27,7 +27,7 @@
                                 CalculationService.UpdateResourceTotalProduction();
                                 var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
                             }
-                            <MudText Typo="Typo.body1">@FormatNumber(resourceProduction, 2)</MudText>
+                            <MudText Typo="Typo.body1">@NumberFormattingService.FormatNumber(resourceProduction, 2)</MudText>
                         </MudTd>
                         <MudTd DataLabel="Actions">
                             <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
@@ -142,23 +142,7 @@
                                             </MudSelect>
                                             <MudNumericField @bind-Value="@resource.Value" Label="Production" 
                                                            Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-resource-value-{generator.Name}-{index}")" />
-                                            <MudSelect T="string" @bind-Value="@resource.Abbr" Label="Abbr" 
-                                                     Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-resource-abbr-{generator.Name}-{index}")">
-                                                <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                                <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                                <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                                <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                                <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                                <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                                <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                                <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                                <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                                <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                                <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                                <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                                <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                                <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                            </MudSelect>
+                                            <AbbreviationSelect @bind-Value="@resource.Abbr" Id="@($"edit-resource-abbr-{generator.Name}-{index}")" />
                                             
                                             <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                                        Color="@(isLast ? Color.Primary : Color.Error)"
@@ -188,10 +172,10 @@
                                             var resourceTotalProd = CalculationService.GetTotalProductionByResourceName(resource.Key);
                                             var percentage = resourceTotalProd > 0 ? (resource.Value / resourceTotalProd) * 100 : 0;
                                             <div>
-                                                <strong>@resource.Key:</strong> @FormatNumber(resource.Value, 2)
+                                                <strong>@resource.Key:</strong> @NumberFormattingService.FormatNumber(resource.Value, 2)
                                             </div>
                                             <div class="text-caption" style="color: #90caf9;">
-                                                Total: @FormatNumber(resourceTotalProd, 2) (@percentage.ToString("F1")%)
+                                                Total: @NumberFormattingService.FormatNumber(resourceTotalProd, 2) (@percentage.ToString("F1")%)
                                             </div>
                                         }
                                     }
@@ -200,7 +184,7 @@
                                         var totalProduction = CalculationService.GetTotalProductionByResourceName(resources.Keys.First());
                                         var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
                                         <MudStack Row="true" Spacing="2">
-                                            <strong>@FormatNumber(generator.Resources.Values.First(), 2) x @generator.Count = @FormatNumber(contribution, 2)</strong>
+                                            <strong>@NumberFormattingService.FormatNumber(generator.Resources.Values.First(), 2) x @generator.Count = @NumberFormattingService.FormatNumber(contribution, 2)</strong>
                                             <div class="text-caption" style="color: #90caf9;">
                                                 (@percentage.ToString("F1")%)
                                             </div>
@@ -248,23 +232,7 @@
                                         </MudSelect>
                                         <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
                                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-cost-value-{generator.Name}-{index}")" />
-                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-cost-abbr-{generator.Name}-{index}")">
-                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                        </MudSelect>
+                                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"edit-cost-abbr-{generator.Name}-{index}")" />
                                         
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                                    Color="@(isLast ? Color.Primary : Color.Error)"
@@ -304,23 +272,7 @@
                                         </MudSelect>
                                         <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
                                                        Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-research-cost-value-{research.Name}-{index}")" />
-                                        <MudSelect T="string" @bind-Value="@cost.Abbr" Label="Abbr" 
-                                                 Variant="Variant.Outlined" Style="width: 100px;" Dense="true" Id="@($"edit-research-cost-abbr-{research.Name}-{index}")">
-                                            <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                            <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                            <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                            <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                            <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                            <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                            <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                            <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                            <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                            <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                            <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                            <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                            <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                            <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                        </MudSelect>
+                                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"edit-research-cost-abbr-{research.Name}-{index}")" />
                                         
                                         <MudButton Size="Size.Small" Variant="Variant.Filled" 
                                                    Color="@(isLast ? Color.Primary : Color.Error)"
@@ -341,26 +293,10 @@
                                                      Variant="Variant.Outlined"
                                                      Dense="true"
                                                      Style="flex: 1;" />
-                                    <MudSelect T="string" @bind-Value="@editCostAbbr" Label="Abbr" Variant="Variant.Outlined"
-                                               Style="width: 100px;" Dense="true">
-                                        <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                                        <MudSelectItem Value="@("K")">K</MudSelectItem>
-                                        <MudSelectItem Value="@("M")">M</MudSelectItem>
-                                        <MudSelectItem Value="@("B")">B</MudSelectItem>
-                                        <MudSelectItem Value="@("T")">T</MudSelectItem>
-                                        <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                                        <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                                        <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                                        <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                                        <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                                        <MudSelectItem Value="@("No")">No</MudSelectItem>
-                                        <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                                        <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                                        <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                                    </MudSelect>
+                                    <AbbreviationSelect @bind-Value="@editCostAbbr" />
                                 </MudStack>
                                 
-                                <div class="text-caption mt-1">Formatted: @FormatNumber(editItem.Cost)</div>
+                                <div class="text-caption mt-1">Formatted: @NumberFormattingService.FormatNumber(editItem.Cost)</div>
                             </div>
                         }
                         else
@@ -371,7 +307,7 @@
                                     @foreach (var cost in context.ResourceCosts)
                                     {
                                         <div>
-                                            <strong>@cost.Key:</strong> @FormatNumber(cost.Value, 2)
+                                            <strong>@cost.Key:</strong> @NumberFormattingService.FormatNumber(cost.Value, 2)
                                         </div>
                                     }
                                 </MudStack>
@@ -379,7 +315,7 @@
                             else
                             {
                                 <div>
-                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Cost)</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Cost)</MudText>
                                 </div>
                             }
                         }
@@ -393,7 +329,7 @@
                                     @if (gain.Value != 0)
                                     {
                                         <div>
-                                            <strong>@gain.Key:</strong> @FormatNumber(gain.Value, 2)
+                                            <strong>@gain.Key:</strong> @NumberFormattingService.FormatNumber(gain.Value, 2)
                                         </div>
                                     }
                                 }
@@ -402,13 +338,13 @@
                         else
                         {
                             <div>
-                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@FormatNumber(context.Gain, 2)</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Gain, 2)</MudText>
                             </div>
                         }
                     </MudTd>
                     <MudTd DataLabel="Cascade Score" Align="Align.Right">
                         <MudChip Size="Size.Small" Color="@GetCascadeScoreColor(context.CascadeScore)">
-                            @FormatNumber(context.CascadeScore, 4)
+                            @NumberFormattingService.FormatNumber(context.CascadeScore, 4)
                         </MudChip>
                     </MudTd>
                     <MudTd DataLabel="Timer" Align="Align.Center">
@@ -495,6 +431,8 @@
 </MudContainer>
 
 @code {
+    [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
+    
     private List<UpgradeResult> rankedUpgrades = new();
     private Dictionary<object, UpgradeResult> editItems = new();
     private Dictionary<string, DateTime> timerStartTimes = new();
@@ -604,77 +542,8 @@
                         // Convert generator Resources to ResourceEntry list
                         foreach (var resource in generator.Resources)
                         {
-                            double value = resource.Value;
-                            string? abbr = null;
-                            double baseValue = value;
+                            var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(resource.Value);
                             
-                            // Determine abbreviation from value and calculate base value
-                            if (value >= 1e39 && value % 1e39 < 1e36)
-                            {
-                                abbr = "Ddc";
-                                baseValue = value / 1e39;
-                            }
-                            else if (value >= 1e36 && value % 1e36 < 1e33)
-                            {
-                                abbr = "Udc";
-                                baseValue = value / 1e36;
-                            }
-                            else if (value >= 1e33 && value % 1e33 < 1e30)
-                            {
-                                abbr = "Dc";
-                                baseValue = value / 1e33;
-                            }
-                            else if (value >= 1e30 && value % 1e30 < 1e27)
-                            {
-                                abbr = "No";
-                                baseValue = value / 1e30;
-                            }
-                            else if (value >= 1e27 && value % 1e27 < 1e24)
-                            {
-                                abbr = "Oc";
-                                baseValue = value / 1e27;
-                            }
-                            else if (value >= 1e24 && value % 1e24 < 1e21)
-                            {
-                                abbr = "Sp";
-                                baseValue = value / 1e24;
-                            }
-                            else if (value >= 1e21 && value % 1e21 < 1e18)
-                            {
-                                abbr = "Sx";
-                                baseValue = value / 1e21;
-                            }
-                            else if (value >= 1e18 && value % 1e18 < 1e15)
-                            {
-                                abbr = "Qi";
-                                baseValue = value / 1e18;
-                            }
-                            else if (value >= 1e15 && value % 1e15 < 1e12)
-                            {
-                                abbr = "Qa";
-                                baseValue = value / 1e15;
-                            }
-                            else if (value >= 1e12 && value % 1e12 < 1e9)
-                            {
-                                abbr = "T";
-                                baseValue = value / 1e12;
-                            }
-                            else if (value >= 1e9 && value % 1e9 < 1e6)
-                            {
-                                abbr = "B";
-                                baseValue = value / 1e9;
-                            }
-                            else if (value >= 1e6 && value % 1e6 < 1e3)
-                            {
-                                abbr = "M";
-                                baseValue = value / 1e6;
-                            }
-                            else if (value >= 1e3 && value % 1e3 < 1)
-                            {
-                                abbr = "K";
-                                baseValue = value / 1e3;
-                            }
-
                             resourceEntries.Add(new ResourceEntry
                             {
                                 ResourceName = resource.Key,
@@ -695,57 +564,8 @@
                         // Convert generator ResourceCosts to ResourceCostEntry list
                         foreach (var cost in generator.ResourceCosts)
                         {
-                            double value = cost.Value;
-                            string? abbr = null;
-                            double baseValue = value;
+                            var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(cost.Value);
                             
-                            // Determine abbreviation from value and calculate base value
-                            if (value >= 1e27 && value % 1e27 < 1e24)
-                            {
-                                abbr = "Oc";
-                                baseValue = value / 1e27;
-                            }
-                            else if (value >= 1e24 && value % 1e24 < 1e21)
-                            {
-                                abbr = "Sp";
-                                baseValue = value / 1e24;
-                            }
-                            else if (value >= 1e21 && value % 1e21 < 1e18)
-                            {
-                                abbr = "Sx";
-                                baseValue = value / 1e21;
-                            }
-                            else if (value >= 1e18 && value % 1e18 < 1e15)
-                            {
-                                abbr = "Qi";
-                                baseValue = value / 1e18;
-                            }
-                            else if (value >= 1e15 && value % 1e15 < 1e12)
-                            {
-                                abbr = "Qa";
-                                baseValue = value / 1e15;
-                            }
-                            else if (value >= 1e12 && value % 1e12 < 1e9)
-                            {
-                                abbr = "T";
-                                baseValue = value / 1e12;
-                            }
-                            else if (value >= 1e9 && value % 1e9 < 1e6)
-                            {
-                                abbr = "B";
-                                baseValue = value / 1e9;
-                            }
-                            else if (value >= 1e6 && value % 1e6 < 1e3)
-                            {
-                                abbr = "M";
-                                baseValue = value / 1e6;
-                            }
-                            else if (value >= 1e3 && value % 1e3 < 1)
-                            {
-                                abbr = "K";
-                                baseValue = value / 1e3;
-                            }
-
                             costEntries.Add(new ResourceCostEntry
                             {
                                 ResourceName = cost.Key,
@@ -774,77 +594,8 @@
                         // Convert research ResourceCosts to ResourceCostEntry list
                         foreach (var cost in research.ResourceCosts)
                         {
-                            double value = cost.Value;
-                            string? abbr = null;
-                            double baseValue = value;
+                            var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(cost.Value);
                             
-                            // Determine abbreviation from value and calculate base value
-                            if (value >= 1e39 && value % 1e39 < 1e36)
-                            {
-                                abbr = "Ddc";
-                                baseValue = value / 1e39;
-                            }
-                            else if (value >= 1e36 && value % 1e36 < 1e33)
-                            {
-                                abbr = "Udc";
-                                baseValue = value / 1e36;
-                            }
-                            else if (value >= 1e33 && value % 1e33 < 1e30)
-                            {
-                                abbr = "Dc";
-                                baseValue = value / 1e33;
-                            }
-                            else if (value >= 1e30 && value % 1e30 < 1e27)
-                            {
-                                abbr = "No";
-                                baseValue = value / 1e30;
-                            }
-                            else if (value >= 1e27 && value % 1e27 < 1e24)
-                            {
-                                abbr = "Oc";
-                                baseValue = value / 1e27;
-                            }
-                            else if (value >= 1e24 && value % 1e24 < 1e21)
-                            {
-                                abbr = "Sp";
-                                baseValue = value / 1e24;
-                            }
-                            else if (value >= 1e21 && value % 1e21 < 1e18)
-                            {
-                                abbr = "Sx";
-                                baseValue = value / 1e21;
-                            }
-                            else if (value >= 1e18 && value % 1e18 < 1e15)
-                            {
-                                abbr = "Qi";
-                                baseValue = value / 1e18;
-                            }
-                            else if (value >= 1e15 && value % 1e15 < 1e12)
-                            {
-                                abbr = "Qa";
-                                baseValue = value / 1e15;
-                            }
-                            else if (value >= 1e12 && value % 1e12 < 1e9)
-                            {
-                                abbr = "T";
-                                baseValue = value / 1e12;
-                            }
-                            else if (value >= 1e9 && value % 1e9 < 1e6)
-                            {
-                                abbr = "B";
-                                baseValue = value / 1e9;
-                            }
-                            else if (value >= 1e6 && value % 1e6 < 1e3)
-                            {
-                                abbr = "M";
-                                baseValue = value / 1e6;
-                            }
-                            else if (value >= 1e3 && value % 1e3 < 1)
-                            {
-                                abbr = "K";
-                                baseValue = value / 1e3;
-                            }
-
                             costEntries.Add(new ResourceCostEntry
                             {
                                 ResourceName = cost.Key,
@@ -1019,7 +770,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
-                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
                         generator.ResourceCosts[cost.ResourceName] = costValue;
                     }
                 }
@@ -1041,7 +792,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
                     {
-                        double productionValue = CalculationService.ApplyAbbreviation(resource.Value, resource.Abbr);
+                        double productionValue = NumberFormattingService.ApplyAbbreviation(resource.Value, resource.Abbr);
                         generator.Resources[resource.ResourceName] = productionValue;
                     }
                 }
@@ -1104,7 +855,7 @@
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
-                        double costValue = CalculationService.ApplyAbbreviation(cost.Value, cost.Abbr);
+                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
                         research.ResourceCosts[cost.ResourceName] = costValue;
                     }
                 }
@@ -1197,72 +948,6 @@
         return generator.GetCurrentProduction();
     }
 
-    private string FormatNumber(double value, int decimals = 2)
-    {
-        if (double.IsNaN(value) || double.IsInfinity(value))
-            return "0";
-
-        double absValue = Math.Abs(value);
-        string sign = value < 0 ? "-" : "";
-        string format = $"F{decimals}";
-
-        if (absValue >= 1e39) // Duodecillion
-        {
-            return $"{sign}{(absValue / 1e39).ToString(format)}Ddc";
-        }
-        else if (absValue >= 1e36) // Undecillion
-        {
-            return $"{sign}{(absValue / 1e36).ToString(format)}Udc";
-        }
-        else if (absValue >= 1e33) // Decillion
-        {
-            return $"{sign}{(absValue / 1e33).ToString(format)}Dc";
-        }
-        else if (absValue >= 1e30) // Nonillion
-        {
-            return $"{sign}{(absValue / 1e30).ToString(format)}No";
-        }
-        else if (absValue >= 1e27) // Octillion
-        {
-            return $"{sign}{(absValue / 1e27).ToString(format)}Oc";
-        }
-        else if (absValue >= 1e24) // Septillion
-        {
-            return $"{sign}{(absValue / 1e24).ToString(format)}Sp";
-        }
-        else if (absValue >= 1e21) // Sextillion
-        {
-            return $"{sign}{(absValue / 1e21).ToString(format)}Sx";
-        }
-        else if (absValue >= 1e18) // Quintillion
-        {
-            return $"{sign}{(absValue / 1e18).ToString(format)}Qi";
-        }
-        else if (absValue >= 1e15) // Quadrillion
-        {
-            return $"{sign}{(absValue / 1e15).ToString(format)}Qa";
-        }
-        else if (absValue >= 1e12) // Trillion
-        {
-            return $"{sign}{(absValue / 1e12).ToString(format)}T";
-        }
-        else if (absValue >= 1e9) // Billion
-        {
-            return $"{sign}{(absValue / 1e9).ToString(format)}B";
-        }
-        else if (absValue >= 1e6) // Million
-        {
-            return $"{sign}{(absValue / 1e6).ToString(format)}M";
-        }
-        else if (absValue >= 1e3) // Thousand
-        {
-            return $"{sign}{(absValue / 1e3).ToString(format)}K";
-        }
-        else
-        {
-            return $"{sign}{absValue.ToString(format)}";
-        }
-    }
 
     private async Task OpenAddGeneratorDialog()
     {

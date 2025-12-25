@@ -7,7 +7,7 @@
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body1" Class="mb-3">
-            Current cost: <strong>@FormatNumber(CurrentCost)</strong>
+            Current cost: <strong>@NumberFormattingService.FormatNumber(CurrentCost)</strong>
         </MudText>
         <MudText Typo="Typo.body2" Class="mb-3">
             Please enter the cost after purchasing this generator:
@@ -20,28 +20,9 @@
                                  Required="true" 
                                  Min="0.01" 
                                  Style="flex: 1;" />
-                <MudSelect T="string" @bind-Value="@newCostAbbr" 
-                           Label="Abbr" 
-                           Variant="Variant.Outlined"
-                           Style="width: 100px;" 
-                           Dense="true">
-                    <MudSelectItem Value="@((string?)null)">None</MudSelectItem>
-                    <MudSelectItem Value="@("K")">K</MudSelectItem>
-                    <MudSelectItem Value="@("M")">M</MudSelectItem>
-                    <MudSelectItem Value="@("B")">B</MudSelectItem>
-                    <MudSelectItem Value="@("T")">T</MudSelectItem>
-                    <MudSelectItem Value="@("Qa")">Qa</MudSelectItem>
-                    <MudSelectItem Value="@("Qi")">Qi</MudSelectItem>
-                    <MudSelectItem Value="@("Sx")">Sx</MudSelectItem>
-                    <MudSelectItem Value="@("Sp")">Sp</MudSelectItem>
-                    <MudSelectItem Value="@("Oc")">Oc</MudSelectItem>
-                    <MudSelectItem Value="@("No")">No</MudSelectItem>
-                    <MudSelectItem Value="@("Dc")">Dc</MudSelectItem>
-                    <MudSelectItem Value="@("Udc")">Udc</MudSelectItem>
-                    <MudSelectItem Value="@("Ddc")">Ddc</MudSelectItem>
-                </MudSelect>
+                <AbbreviationSelect @bind-Value="@newCostAbbr" />
             </MudStack>
-            <div class="text-caption mt-1">Formatted: @FormatNumber(EffectiveNewCost)</div>
+            <div class="text-caption mt-1">Formatted: @NumberFormattingService.FormatNumber(EffectiveNewCost)</div>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -56,6 +37,7 @@
     [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Parameter] public double CurrentCost { get; set; }
+    [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
     private MudForm? form;
     private bool success;
@@ -64,74 +46,7 @@
     private double newCostValue = 0;
     private string? newCostAbbr = null;
 
-    private double EffectiveNewCost => CalculationService.ApplyAbbreviation(newCostValue, newCostAbbr);
-
-    private string FormatNumber(double value, int decimals = 2)
-    {
-        if (double.IsNaN(value) || double.IsInfinity(value))
-            return "0";
-
-        double absValue = Math.Abs(value);
-        string sign = value < 0 ? "-" : "";
-        string format = $"F{decimals}";
-
-        if (absValue >= 1e39) // Duodecillion
-        {
-            return $"{sign}{(absValue / 1e39).ToString(format)}Ddc";
-        }
-        else if (absValue >= 1e36) // Undecillion
-        {
-            return $"{sign}{(absValue / 1e36).ToString(format)}Udc";
-        }
-        else if (absValue >= 1e33) // Decillion
-        {
-            return $"{sign}{(absValue / 1e33).ToString(format)}Dc";
-        }
-        else if (absValue >= 1e30) // Nonillion
-        {
-            return $"{sign}{(absValue / 1e30).ToString(format)}No";
-        }
-        else if (absValue >= 1e27) // Octillion
-        {
-            return $"{sign}{(absValue / 1e27).ToString(format)}Oc";
-        }
-        else if (absValue >= 1e24) // Septillion
-        {
-            return $"{sign}{(absValue / 1e24).ToString(format)}Sp";
-        }
-        else if (absValue >= 1e21) // Sextillion
-        {
-            return $"{sign}{(absValue / 1e21).ToString(format)}Sx";
-        }
-        else if (absValue >= 1e18) // Quintillion
-        {
-            return $"{sign}{(absValue / 1e18).ToString(format)}Qi";
-        }
-        else if (absValue >= 1e15) // Quadrillion
-        {
-            return $"{sign}{(absValue / 1e15).ToString(format)}Qa";
-        }
-        else if (absValue >= 1e12) // Trillion
-        {
-            return $"{sign}{(absValue / 1e12).ToString(format)}T";
-        }
-        else if (absValue >= 1e9) // Billion
-        {
-            return $"{sign}{(absValue / 1e9).ToString(format)}B";
-        }
-        else if (absValue >= 1e6) // Million
-        {
-            return $"{sign}{(absValue / 1e6).ToString(format)}M";
-        }
-        else if (absValue >= 1e3) // Thousand
-        {
-            return $"{sign}{(absValue / 1e3).ToString(format)}K";
-        }
-        else
-        {
-            return $"{sign}{absValue.ToString(format)}";
-        }
-    }
+    private double EffectiveNewCost => NumberFormattingService.ApplyAbbreviation(newCostValue, newCostAbbr);
 
     private async Task Save()
     {
@@ -151,4 +66,3 @@
         MudDialog.Cancel();
     }
 }
-
