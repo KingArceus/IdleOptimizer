@@ -83,7 +83,6 @@
                     <MudTh>Type</MudTh>
                     <MudTh Align="Align.Right">Contribute</MudTh>
                     <MudTh Align="Align.Right">Cost</MudTh>
-                    <MudTh Align="Align.Right">Gain</MudTh>
                     <MudTh Align="Align.Right">Cascade Score</MudTh>
                     <MudTh Align="Align.Center">Timer</MudTh>
                     <MudTh>Actions</MudTh>
@@ -200,13 +199,34 @@
                                 @foreach (var target in research.TargetGenerators)
                                 {
                                     <div class="mb-1">
-                                        @target <span style="color: #4caf50; font-weight: bold;">(x@(research.GetMultiplier(target).ToString("F2")))</span>
+                                        @target <span style="color: #4caf50; font-weight: bold;">x@(research.GetMultiplier(target).ToString("F2"))</span>
                                     </div>
                                 }
                             }
                             else
                             {
                                 <span>-</span>
+                            }
+                            <MudDivider class="mb-1"/>
+                            @if (context.GainByResource != null && context.GainByResource.Count > 0)
+                            {
+                                <MudStack Spacing="1">
+                                    @foreach (var gain in context.GainByResource)
+                                    {
+                                        @if (gain.Value != 0)
+                                        {
+                                            <div>
+                                                <strong>@gain.Key:</strong> @NumberFormattingService.FormatNumber(gain.Value, 2)
+                                            </div>
+                                        }
+                                    }
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <div>
+                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Gain, 2)</MudText>
+                                </div>
                             }
                         }
                     </MudTd>
@@ -318,28 +338,6 @@
                                     <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Cost)</MudText>
                                 </div>
                             }
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Gain" Align="Align.Right">
-                        @if (context.GainByResource != null && context.GainByResource.Count > 0)
-                        {
-                            <MudStack Spacing="1">
-                                @foreach (var gain in context.GainByResource)
-                                {
-                                    @if (gain.Value != 0)
-                                    {
-                                        <div>
-                                            <strong>@gain.Key:</strong> @NumberFormattingService.FormatNumber(gain.Value, 2)
-                                        </div>
-                                    }
-                                }
-                            </MudStack>
-                        }
-                        else
-                        {
-                            <div>
-                                <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Gain, 2)</MudText>
-                            </div>
                         }
                     </MudTd>
                     <MudTd DataLabel="Cascade Score" Align="Align.Right">
