@@ -119,14 +119,7 @@ public class UpgradeEvaluationService(
         Dictionary<string, double> currentProductionByResource,
         Dictionary<string, double> newProductionByResource)
     {
-        // Baseline = Current WaitTime for the upgrade being evaluated
-        double baseline = upgrade.TimeToAfford;
-        if (baseline <= 0 || double.IsInfinity(baseline) || baseline == double.MaxValue)
-        {
-            baseline = 1.0; // Fallback to avoid division by zero
-        }
-        
-        // Get all unpurchased upgrades
+        // Get all unpurchased upgrades first (needed for baseline calculation)
         var futureUpgrades = new List<(Dictionary<string, double>? ResourceCosts, double Cost, object SourceItem)>();
         
         foreach (var generator in generators)
@@ -134,10 +127,6 @@ public class UpgradeEvaluationService(
             if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
             {
                 futureUpgrades.Add((generator.ResourceCosts, generator.GetPurchaseCost(), generator));
-            }
-            else if (generator.Cost > 0)
-            {
-                futureUpgrades.Add((null, generator.Cost, generator));
             }
         }
         
@@ -147,10 +136,58 @@ public class UpgradeEvaluationService(
             {
                 futureUpgrades.Add((researchItem.ResourceCosts, researchItem.GetTotalCost(), researchItem));
             }
-            else if (researchItem.Cost > 0)
+        }
+        
+        // Calculate context-aware baseline from all future upgrades
+        var validTimeToAffordValues = new List<double>();
+        
+        // Add current upgrade's TimeToAfford if valid
+        if (upgrade.TimeToAfford > 0 && 
+            !double.IsInfinity(upgrade.TimeToAfford) && 
+            upgrade.TimeToAfford != double.MaxValue)
+        {
+            validTimeToAffordValues.Add(upgrade.TimeToAfford);
+        }
+
+        // Calculate TimeToAfford for all other future upgrades to establish context
+        foreach (var (resourceCosts, _, sourceItem) in futureUpgrades)
+        {
+            // Skip the upgrade we're currently evaluating
+            if (sourceItem == upgrade.SourceItem)
+                continue;
+            
+            // Only calculate for upgrades with resource costs
+            if (resourceCosts != null && resourceCosts.Count > 0)
             {
-                futureUpgrades.Add((null, researchItem.Cost, researchItem));
+                double timeToAfford = CalculateTimeToAffordWithResourceCosts(resourceCosts, currentProductionByResource);
+                if (timeToAfford > 0 && 
+                    !double.IsInfinity(timeToAfford) && 
+                    timeToAfford != double.MaxValue)
+                {
+                    validTimeToAffordValues.Add(timeToAfford);
+                }
             }
+        }
+
+        // Determine baseline using median for robustness against outliers
+        double baseline;
+        if (validTimeToAffordValues.Count == 0)
+        {
+            // Fallback: estimate from production
+            double totalProduction = currentProductionByResource.Values.Sum();
+            baseline = totalProduction > 0 ? 1.0 : 1.0;
+        }
+        else if (validTimeToAffordValues.Count == 1)
+        {
+            // Only one valid value (the current upgrade)
+            baseline = validTimeToAffordValues[0];
+        }
+        else
+        {
+            // Use median for robustness
+            validTimeToAffordValues.Sort();
+            int medianIndex = validTimeToAffordValues.Count / 2;
+            baseline = validTimeToAffordValues[medianIndex];
         }
         
         // Calculate Total Future Time Saved and Bottleneck Shifts
@@ -165,20 +202,9 @@ public class UpgradeEvaluationService(
             
             Dictionary<string, double>? effectiveCosts = resourceCosts;
             
-            // Handle legacy costs
+            // Skip if no resource costs
             if (effectiveCosts == null || effectiveCosts.Count == 0)
-            {
-                effectiveCosts = [];
-                double totalProduction = currentProductionByResource.Values.Sum();
-                foreach (var resource in currentProductionByResource)
-                {
-                    if (totalProduction > 0)
-                    {
-                        double resourceShare = resource.Value / totalProduction;
-                        effectiveCosts[resource.Key] = cost * resourceShare;
-                    }
-                }
-            }
+                continue;
             
             // Calculate bottleneck resource before upgrade
             string? bottleneckBefore = _valuationService.IdentifyBottleneckResource(effectiveCosts, currentProductionByResource);
@@ -226,8 +252,29 @@ public class UpgradeEvaluationService(
             }
         }
         
-        // Calculate cascade multiplier: 1 + (Total Future Time Saved / Baseline) + 0.5 × (Bottleneck Shifts)
-        double cascadeMultiplier = 1.0 + (totalFutureTimeSaved / baseline) + (0.5 * bottleneckShifts);
+        // Count total number of upgrades being evaluated (excluding current upgrade)
+        int totalUpgradesEvaluated = futureUpgrades.Count(u => u.SourceItem != upgrade.SourceItem);
+        
+        // Calculate dynamic bottleneck shift weight based on number of upgrades
+        // Uses logarithmic scaling: weight decreases as upgrades increase
+        double bottleneckShiftWeight;
+        if (totalUpgradesEvaluated <= 1)
+        {
+            bottleneckShiftWeight = 0.5; // Keep original weight for very few upgrades
+        }
+        else
+        {
+            // Logarithmic scaling prevents too rapid decay
+            // Formula: baseWeight / (1 + log10(totalUpgrades))
+            double logScale = 1.0 + Math.Log10(totalUpgradesEvaluated);
+            bottleneckShiftWeight = 0.5 / logScale;
+            
+            // Ensure minimum weight (10% of original) to keep it meaningful
+            bottleneckShiftWeight = Math.Max(0.1, bottleneckShiftWeight);
+        }
+        
+        // Calculate cascade multiplier: 1 + (Total Future Time Saved / Baseline) + (Dynamic Weight × Bottleneck Shifts)
+        double cascadeMultiplier = 1.0 + (totalFutureTimeSaved / baseline) + (bottleneckShiftWeight * bottleneckShifts);
         
         return cascadeMultiplier;
     }

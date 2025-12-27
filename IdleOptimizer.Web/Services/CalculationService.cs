@@ -32,7 +32,6 @@ public class CalculationService(
 
     public double ApplyAbbreviation(double value, string? abbr)
     {
-        // Delegate to formatting service for backward compatibility
         return _numberFormatting.ApplyAbbreviation(value, abbr);
     }
 
@@ -408,10 +407,6 @@ public class CalculationService(
                 {
                     research.ResourceCosts[resourceKey] *= costMultiplier;
                 }
-            }
-            else if (research.Cost > 0)
-            {
-                research.Cost *= costMultiplier;
             }
         }
         

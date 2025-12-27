@@ -169,7 +169,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
     private static string ConvertResearchToCsv(List<Research> research)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators,TargetMultipliers");
+        sb.AppendLine("Name,Cost,ResourceCosts,TargetGenerators,TargetMultipliers");
         
         foreach (var item in research)
         {
@@ -191,7 +191,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 targetMultipliersStr = string.Join(";", multiplierPairs);
             }
             
-            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.MultiplierValue.ToString(CultureInfo.InvariantCulture)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{EscapeCsvField(targetGenerators)},{EscapeCsvField(targetMultipliersStr)}");
+            sb.AppendLine($"{EscapeCsvField(item.Name)},{item.Cost.ToString(CultureInfo.InvariantCulture)},{EscapeCsvField(resourceCostsStr)},{EscapeCsvField(targetGenerators)},{EscapeCsvField(targetMultipliersStr)}");
         }
         
         return sb.ToString();
@@ -271,6 +271,7 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
         // Check header to determine format version
         var header = lines[0].Trim();
         bool hasTargetMultipliers = header.Contains("TargetMultipliers");
+        bool hasLegacyMultiplierValue = header.Contains("MultiplierValue");
         
         for (int i = 1; i < lines.Length; i++) // Skip header
         {
@@ -278,19 +279,26 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
             if (string.IsNullOrEmpty(line)) continue;
             
             var fields = ParseCsvLine(line);
-            if (fields.Count < 5) continue; // Skip invalid lines
+            if (fields.Count < 4) continue; // Skip invalid lines
             
             var researchItem = new Research();
             
-            // Format (old): Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators
-            // Format (new): Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators,TargetMultipliers
-            researchItem.Name = UnescapeCsvField(fields[0]);
-            researchItem.MultiplierValue = double.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mv) ? mv : 0;
-            researchItem.Cost = double.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
+            // Format (new): Name,Cost,ResourceCosts,TargetGenerators,TargetMultipliers
+            // Format (legacy): Name,MultiplierValue,Cost,ResourceCosts,TargetGenerators,TargetMultipliers
+            int fieldIndex = 0;
+            researchItem.Name = UnescapeCsvField(fields[fieldIndex++]);
+            
+            // Skip MultiplierValue if present (legacy format)
+            if (hasLegacyMultiplierValue)
+            {
+                fieldIndex++;
+            }
+            
+            researchItem.Cost = double.TryParse(fields[fieldIndex++], NumberStyles.Float, CultureInfo.InvariantCulture, out var cost) ? cost : 0;
             
             // Parse resource costs - always initialize the dictionary
             researchItem.ResourceCosts = [];
-            var resourceCostsStr = UnescapeCsvField(fields[3]);
+            var resourceCostsStr = UnescapeCsvField(fields[fieldIndex++]);
             if (!string.IsNullOrEmpty(resourceCostsStr))
             {
                 var costPairs = resourceCostsStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
@@ -304,17 +312,16 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                 }
             }
             
-            var targetGenerators = UnescapeCsvField(fields[4])
+            var targetGenerators = UnescapeCsvField(fields[fieldIndex++])
                 .Split(';', StringSplitOptions.RemoveEmptyEntries)
                 .ToList();
             researchItem.TargetGenerators = targetGenerators;
             
-            // Parse target multipliers (new format) or migrate from MultiplierValue (old format)
+            // Parse target multipliers
             researchItem.TargetMultipliers = [];
-            if (hasTargetMultipliers && fields.Count > 5)
+            if (hasTargetMultipliers && fields.Count > fieldIndex)
             {
-                // New format: parse TargetMultipliers
-                var targetMultipliersStr = UnescapeCsvField(fields[5]);
+                var targetMultipliersStr = UnescapeCsvField(fields[fieldIndex]);
                 if (!string.IsNullOrEmpty(targetMultipliersStr))
                 {
                     var multiplierPairs = targetMultipliersStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
@@ -326,15 +333,6 @@ public class LocalStorageService(IJSRuntime jsRuntime, HttpClient httpClient) : 
                             researchItem.TargetMultipliers[parts[0]] = multiplier;
                         }
                     }
-                }
-            }
-            
-            // Backward compatibility: if TargetMultipliers is empty but MultiplierValue is set, migrate it
-            if (researchItem.TargetMultipliers.Count == 0 && researchItem.MultiplierValue != 0 && targetGenerators.Count > 0)
-            {
-                foreach (var generatorName in targetGenerators)
-                {
-                    researchItem.TargetMultipliers[generatorName] = researchItem.MultiplierValue;
                 }
             }
             

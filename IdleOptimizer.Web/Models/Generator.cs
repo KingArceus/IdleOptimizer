@@ -13,7 +13,7 @@ public class Generator
     public double CostRatio { get; set; } // Cost increase ratio
     public List<string> RequiredGenerators { get; set; } = []; // Names of generators that must be purchased first
     public List<string> RequiredResearch { get; set; } = []; // Names of research that must be applied first
-    public bool IsUnlocked { get; set; } = true; // Track unlock state (default true for backward compatibility)
+    public bool IsUnlocked { get; set; } = true; // Track unlock state
 
     public double GetCurrentProduction()
     {
@@ -50,4 +50,3 @@ public class Generator
         return Cost;
     }
 }
-

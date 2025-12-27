@@ -54,27 +54,6 @@ public class ValuationService : IValuationService
                     }
                 }
             }
-            else if (researchItem.Cost > 0)
-            {
-                // Legacy cost - distribute across all resources proportionally
-                double totalProduction = productionByResource.Values.Sum();
-                foreach (var resource in productionByResource)
-                {
-                    if (totalProduction > 0)
-                    {
-                        double resourceShare = resource.Value / totalProduction;
-                        double effectiveDemand = researchItem.Cost * resourceShare;
-                        if (demandByResource.ContainsKey(resource.Key))
-                        {
-                            demandByResource[resource.Key] += effectiveDemand;
-                        }
-                        else
-                        {
-                            demandByResource[resource.Key] = effectiveDemand;
-                        }
-                    }
-                }
-            }
         }
         
         // Calculate resource values: demand / production rate
@@ -126,10 +105,6 @@ public class ValuationService : IValuationService
             {
                 allUpgrades.Add((generator.ResourceCosts, generator.GetPurchaseCost()));
             }
-            else if (generator.Cost > 0)
-            {
-                allUpgrades.Add((null, generator.Cost));
-            }
         }
         
         foreach (var researchItem in research)
@@ -137,10 +112,6 @@ public class ValuationService : IValuationService
             if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0)
             {
                 allUpgrades.Add((researchItem.ResourceCosts, researchItem.GetTotalCost()));
-            }
-            else if (researchItem.Cost > 0)
-            {
-                allUpgrades.Add((null, researchItem.Cost));
             }
         }
         
@@ -151,7 +122,7 @@ public class ValuationService : IValuationService
             double totalImmediateNeed = 0;
             var immediateShortage = new Dictionary<string, double>();
             
-            foreach (var (resourceCosts, cost) in allUpgrades)
+            foreach (var (resourceCosts, _) in allUpgrades)
             {
                 if (resourceCosts != null && resourceCosts.Count > 0)
                 {
@@ -171,30 +142,6 @@ public class ValuationService : IValuationService
                             immediateShortage[resourceCost.Key] = shortage;
                         }
                         totalImmediateNeed += resourceCost.Value;
-                    }
-                }
-                else
-                {
-                    // Legacy cost - distribute
-                    double totalProduction = productionByResource.Values.Sum();
-                    foreach (var resource in productionByResource)
-                    {
-                        if (totalProduction > 0)
-                        {
-                            double resourceShare = resource.Value / totalProduction;
-                            double effectiveCost = cost * resourceShare;
-                            double shortage = Math.Max(0, effectiveCost - resource.Value);
-                            
-                            if (immediateShortage.ContainsKey(resource.Key))
-                            {
-                                immediateShortage[resource.Key] += shortage;
-                            }
-                            else
-                            {
-                                immediateShortage[resource.Key] = shortage;
-                            }
-                            totalImmediateNeed += effectiveCost;
-                        }
                     }
                 }
             }

@@ -47,20 +47,6 @@ public class ResearchEditViewModel
                 });
             }
         }
-        else if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
-        {
-            // Handle legacy case where we have TargetGenerators but need to create multipliers
-            // Use MultiplierValue if available, otherwise default to 1.0
-            double multiplierValue = research.MultiplierValue > 0 ? research.MultiplierValue : 1.0;
-            foreach (var generatorName in research.TargetGenerators)
-            {
-                viewModel.TargetMultipliers.Add(new TargetMultiplierViewModel
-                {
-                    GeneratorName = generatorName,
-                    MultiplierValue = multiplierValue
-                });
-            }
-        }
 
         return viewModel;
     }
