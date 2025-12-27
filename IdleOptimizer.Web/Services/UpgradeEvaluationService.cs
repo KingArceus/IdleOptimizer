@@ -111,13 +111,15 @@ public class UpgradeEvaluationService(
     /// <summary>
     /// Calculates cascade score using the new multi-resource formula:
     /// 1 + (Total Future Time Saved / Baseline) + 0.5 × (Bottleneck Shifts Caused)
+    /// Multiplied by payback bonus for investment efficiency
     /// </summary>
     public double CalculateCascadeScore(
         UpgradeResult upgrade,
         List<Generator> generators,
         List<Research> research,
         Dictionary<string, double> currentProductionByResource,
-        Dictionary<string, double> newProductionByResource)
+        Dictionary<string, double> newProductionByResource,
+        double timeToPayback)
     {
         // Get all unpurchased upgrades first (needed for baseline calculation)
         var futureUpgrades = new List<(Dictionary<string, double>? ResourceCosts, double Cost, object SourceItem)>();
@@ -276,7 +278,34 @@ public class UpgradeEvaluationService(
         // Calculate cascade multiplier: 1 + (Total Future Time Saved / Baseline) + (Dynamic Weight × Bottleneck Shifts)
         double cascadeMultiplier = 1.0 + (totalFutureTimeSaved / baseline) + (bottleneckShiftWeight * bottleneckShifts);
         
-        return cascadeMultiplier;
+        // Calculate payback bonus: upgrades with faster payback get priority boost
+        double paybackBonus = 1.0;
+        if (timeToPayback > 0 && 
+            !double.IsInfinity(timeToPayback) && 
+            timeToPayback != double.MaxValue &&
+            baseline > 0)
+        {
+            double paybackRatio = timeToPayback / baseline;
+            
+            // Logarithmic scaling: shorter payback = higher bonus
+            paybackBonus = 1.0 + (1.0 / Math.Max(1, Math.Log10(1 + paybackRatio)));
+        }
+        
+        // Penalize upgrades that take longer than baseline to afford
+        double timeToAffordPenalty = 1.0;
+        if (upgrade.TimeToAfford > 0 && 
+            !double.IsInfinity(upgrade.TimeToAfford) && 
+            upgrade.TimeToAfford != double.MaxValue &&
+            baseline > 0)
+        {
+            double timeRatio = upgrade.TimeToAfford / baseline;
+            
+            // Use square root to prevent too aggressive penalization
+            timeToAffordPenalty = 1.0 / Math.Sqrt(timeRatio);
+        }
+        
+        double finalCascadeScore = cascadeMultiplier * paybackBonus * timeToAffordPenalty;
+        return finalCascadeScore;
     }
 
     public UpgradeResult EvaluateGeneratorPurchase(
@@ -362,7 +391,7 @@ public class UpgradeEvaluationService(
         {
             // Multiple resource costs - find the bottleneck (longest time to afford)
             timeToAfford = CalculateTimeToAffordWithResourceCosts(generator.ResourceCosts, currentProductionByResource);
-            secondsToAdd = CalculateTimeToAffordWithResourceCosts(generator.ResourceCosts, currentProductionByResource);
+            secondsToAdd = timeToAfford;
         }
         else
         {
@@ -405,7 +434,8 @@ public class UpgradeEvaluationService(
             allGenerators,
             [], // Research list not needed for generator evaluation
             currentProductionByResource,
-            newProductionByResource
+            newProductionByResource,
+            timeToPayback
         );
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
@@ -556,7 +586,7 @@ public class UpgradeEvaluationService(
         {
             // Multiple resource costs - find the bottleneck (longest time to afford)
             timeToAfford = CalculateTimeToAffordWithResourceCosts(research.ResourceCosts, currentProductionByResource);
-            secondsToAdd = CalculateTimeToAffordWithResourceCosts(research.ResourceCosts, currentProductionByResource);
+            secondsToAdd = timeToAfford;
         }
         else
         {
@@ -599,7 +629,8 @@ public class UpgradeEvaluationService(
             allGenerators,
             allResearch,
             currentProductionByResource,
-            newProductionByResource
+            newProductionByResource,
+            timeToPayback
         );
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)

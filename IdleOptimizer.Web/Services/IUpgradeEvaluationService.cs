@@ -24,7 +24,8 @@ public interface IUpgradeEvaluationService
         List<Generator> generators,
         List<Research> research,
         Dictionary<string, double> currentProductionByResource,
-        Dictionary<string, double> newProductionByResource);
+        Dictionary<string, double> newProductionByResource,
+        double timeToPayback);
     
     double CalculateTimeToAffordWithResourceCosts(
         Dictionary<string, double> resourceCosts,
