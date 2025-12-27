@@ -1,0 +1,39 @@
+@using IdleOptimizer.Models
+@using IdleOptimizer.Services
+@using MudBlazor
+
+@if (CalculationService.Resources.Count > 0)
+{
+    <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
+              Elevation="1" Class="mt-2 mb-4">
+        <RowTemplate>
+            <MudTd DataLabel="Resource Name">
+                <strong>@context.Name</strong>
+            </MudTd>
+            <MudTd DataLabel="Total Production" Align="Align.Right">
+                @{
+                    CalculationService.UpdateResourceTotalProduction();
+                    var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
+                }
+                <MudText Typo="Typo.body1">@NumberFormattingService.FormatNumber(resourceProduction, 2)</MudText>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
+                         StartIcon="@Icons.Material.Filled.Delete" 
+                         OnClick="async () => await OnDeleteResource.InvokeAsync(context)">
+                    Delete
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
+}
+
+@code {
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Parameter] public INumberFormattingService NumberFormattingService { get; set; } = default!;
+    [Parameter] public EventCallback<Resource> OnDeleteResource { get; set; }
+}

@@ -1,0 +1,59 @@
+@using IdleOptimizer.ViewModels
+@using IdleOptimizer.Services
+@using MudBlazor
+
+<MudStack Spacing="2">
+    @for (int index = 0; index < Entries.Count; index++)
+    {
+        var entry = Entries[index];
+        var isLast = index == Entries.Count - 1;
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudSelect ShrinkLabel T="string" @bind-Value="@entry.ResourceName" Label="Resource" 
+                       Variant="Variant.Outlined" Style="flex: 1;" Id="@($"{ItemIdPrefix}-resource-{index}")">
+                @if (ShowSelectResourceOption)
+                {
+                    <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
+                }
+                @foreach (var res in CalculationService.Resources)
+                {
+                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudNumericField ShrinkLabel @bind-Value="@entry.Value" Label="Cost Amount" 
+                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"{ItemIdPrefix}-value-{index}")" />
+            <AbbreviationSelect @bind-Value="@entry.Abbr" Id="@($"{ItemIdPrefix}-abbr-{index}")" />
+            
+            <MudButton Size="Size.Small" Variant="Variant.Filled" 
+                       Color="@(isLast ? Color.Primary : Color.Error)"
+                       Style="height: 50px; width: 50px; margin-top: 3px;"
+                       OnClick="@(isLast ? AddEntry : () => RemoveEntry(entry))">
+                @(isLast ? "Add" : "Remove")
+            </MudButton>
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public List<ResourceCostEntryViewModel> Entries { get; set; } = new();
+    [Parameter] public EventCallback<List<ResourceCostEntryViewModel>> EntriesChanged { get; set; }
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Parameter] public string ItemIdPrefix { get; set; } = "resource-cost-entry";
+    [Parameter] public bool ShowSelectResourceOption { get; set; } = true;
+    
+    private void AddEntry()
+    {
+        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
+        Entries.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
+        EntriesChanged.InvokeAsync(Entries);
+    }
+    
+    private void RemoveEntry(ResourceCostEntryViewModel entry)
+    {
+        // Prevent removing the last item to ensure there's always at least one entry
+        if (Entries.Count > 1)
+        {
+            Entries.Remove(entry);
+            EntriesChanged.InvokeAsync(Entries);
+        }
+    }
+}

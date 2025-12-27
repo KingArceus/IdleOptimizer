@@ -11,461 +11,79 @@
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 
+@using IdleOptimizer.ViewModels
+
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
     <MudCard>
         <MudCardContent>
-            @if (CalculationService.Resources.Count > 0)
-            {
-                <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
-                          Elevation="1" Class="mt-2 mb-4">
-                    <RowTemplate>
-                        <MudTd DataLabel="Resource Name">
-                            <strong>@context.Name</strong>
-                        </MudTd>
-                        <MudTd DataLabel="Total Production" Align="Align.Right">
-                            @{
-                                CalculationService.UpdateResourceTotalProduction();
-                                var resourceProduction = CalculationService.GetTotalProductionByResourceName(context.Name);
-                            }
-                            <MudText Typo="Typo.body1">@NumberFormattingService.FormatNumber(resourceProduction, 2)</MudText>
-                        </MudTd>
-                        <MudTd DataLabel="Actions">
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
-                                     StartIcon="@Icons.Material.Filled.Delete" 
-                                     OnClick="async () => await DeleteResource(context)">
-                                Delete
-                            </MudButton>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Class="mt-2">No resources defined. Add a resource to get started.</MudText>
-            }
-
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
-                        OnClick="OpenAddGeneratorDialog" Class="mb-2 mr-2">
-                        Generator
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
-                            OnClick="OpenAddResearchDialog" Class="mb-2 mr-2">
-                        Research
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" 
-                            OnClick="OpenAddResourceDialog" Class="mb-2">
-                        Resource
-                    </MudButton>
-                </MudStack>
-
-                <MudSpacer />
-
-                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
-                        OnClick="RefreshRankings" Class="mb-2 ml-2">
-                        Refresh
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" 
-                            OnClick="OpenPrestigeDialog" Class="mb-2 ml-2">
-                        Prestige
-                    </MudButton>
-                </MudStack>
-            </MudStack>
+            <ResourceSummaryTable CalculationService="@CalculationService" 
+                                  NumberFormattingService="@NumberFormattingService"
+                                  OnDeleteResource="@DeleteResource" />
             
-            <InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
+            <ActionButtons OnAddGenerator="@OpenAddGeneratorDialog"
+                          OnAddResearch="@OpenAddResearchDialog"
+                          OnAddResource="@OpenAddResourceDialog"
+                          OnRefresh="@RefreshRankings"
+                          OnPrestige="@OpenPrestigeDialog" />
 
-            <MudTable Items="@rankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
-                      Elevation="2" Class="mt-4">
-                <HeaderContent>
-                    <MudTh>Item Name</MudTh>
-                    <MudTh>Type</MudTh>
-                    <MudTh Align="Align.Right">Contribute</MudTh>
-                    <MudTh Align="Align.Right">Cost</MudTh>
-                    <MudTh Align="Align.Right">Cascade Score</MudTh>
-                    <MudTh Align="Align.Center">Timer</MudTh>
-                    <MudTh>Actions</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    @{
-                        var isEditing = IsEditing(context);
-                        var editItem = isEditing ? GetOrCreateEditItem(context) : context;
-                    }
-                    <MudTd DataLabel="Item Name">
-                        @if (isEditing)
-                        {
-                            <MudTextField @bind-Value="@editItem.ItemName" Variant="Variant.Outlined" Dense="true" />
-                        }
-                        else
-                        {
-                            @context.ItemName
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Type">
-                        @if (isEditing)
-                        {
-                            <MudSelect T="string" @bind-Value="@editItem.Type" Variant="Variant.Outlined" Dense="true">
-                                <MudSelectItem Value="@("Generator")">Generator</MudSelectItem>
-                                <MudSelectItem Value="@("Research")">Research</MudSelectItem>
-                            </MudSelect>
-                        }
-                        else
-                        {
-                            <MudChip Size="Size.Small" Color="@(context.Type == "Generator" ? Color.Primary : Color.Secondary)">
-                                @context.Type
-                            </MudChip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Contribute" Align="Align.Right">
-                        @if (context.Type == "Generator" && context.SourceItem is Generator generator)
-                        {
-                            @if (isEditing)
-                            {
-                                <MudStack Spacing="2">
-                                    @{
-                                        var editResources = GetOrCreateEditResources(generator);
-                                    }
-                                    @for (int index = 0; index < editResources.Count; index++)
-                                    {
-                                        var resource = editResources[index];
-                                        var isLast = index == editResources.Count - 1;
-                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                            <MudSelect T="string" @bind-Value="@resource.ResourceName" Label="Resource" 
-                                                       Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-resource-name-{generator.Name}-{index}")">
-                                                <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
-                                                @foreach (var res in CalculationService.Resources)
-                                                {
-                                                    <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                                }
-                                            </MudSelect>
-                                            <MudNumericField @bind-Value="@resource.Value" Label="Production" 
-                                                           Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-resource-value-{generator.Name}-{index}")" />
-                                            <AbbreviationSelect @bind-Value="@resource.Abbr" Id="@($"edit-resource-abbr-{generator.Name}-{index}")" />
-                                            
-                                            <MudButton Size="Size.Small" Variant="Variant.Filled" 
-                                                       Color="@(isLast ? Color.Primary : Color.Error)"
-                                                       Style="height: 50px; width: 50px; margin-top: 3px;"
-                                                       OnClick="@(isLast ? () => AddEditResource(generator) : () => RemoveEditResource(generator, resource))">
-                                                @(isLast ? "Add" : "Remove")
-                                            </MudButton>
-                                        </MudStack>
-                                    }
-                                    <MudNumericField @bind-Value="@editItem.Count"
-                                                     Label="Count"
-                                                     Variant="Variant.Outlined"
-                                                     Dense="true"
-                                                     Style="flex: 1;" />
-                                </MudStack>
-                            }
-                            else
-                            {
-                                var contribution = GetGeneratorContribution(generator);
-                                var resources = generator.GetCurrentProductionByResource();
-                                
-                                <MudStack Spacing="1">
-                                    @if (resources.Count > 1)
-                                    {
-                                        @foreach (var resource in resources)
-                                        {
-                                            var resourceTotalProd = CalculationService.GetTotalProductionByResourceName(resource.Key);
-                                            var percentage = resourceTotalProd > 0 ? (resource.Value / resourceTotalProd) * 100 : 0;
-                                            <div>
-                                                <strong>@resource.Key:</strong> @NumberFormattingService.FormatNumber(resource.Value, 2)
-                                            </div>
-                                            <div class="text-caption" style="color: #90caf9;">
-                                                Total: @NumberFormattingService.FormatNumber(resourceTotalProd, 2) (@percentage.ToString("F1")%)
-                                            </div>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        var totalProduction = CalculationService.GetTotalProductionByResourceName(resources.Keys.First());
-                                        var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
-                                        <MudStack Row="true" Spacing="2">
-                                            <strong>@NumberFormattingService.FormatNumber(generator.Resources.Values.First(), 2) x @generator.Count = @NumberFormattingService.FormatNumber(contribution, 2)</strong>
-                                            <div class="text-caption" style="color: #90caf9;">
-                                                (@percentage.ToString("F1")%)
-                                            </div>
-                                        </MudStack>
-                                    }
-                                </MudStack>
-                            }
-                        }
-                        else if (context.Type == "Research" && context.SourceItem is Research research)
-                        {
-                            @if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
-                            {
-                                @foreach (var target in research.TargetGenerators)
-                                {
-                                    <div class="mb-1">
-                                        @target <span style="color: #4caf50; font-weight: bold;">x@(research.GetMultiplier(target).ToString("F2"))</span>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <span>-</span>
-                            }
-                            <MudDivider class="mb-1"/>
-                            @if (context.GainByResource != null && context.GainByResource.Count > 0)
-                            {
-                                <MudStack Spacing="1">
-                                    @foreach (var gain in context.GainByResource)
-                                    {
-                                        @if (gain.Value != 0)
-                                        {
-                                            <div>
-                                                <strong>@gain.Key:</strong> @NumberFormattingService.FormatNumber(gain.Value, 2)
-                                            </div>
-                                        }
-                                    }
-                                </MudStack>
-                            }
-                            else
-                            {
-                                <div>
-                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Gain, 2)</MudText>
-                                </div>
-                            }
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Cost" Align="Align.Right">
-                        @if (isEditing && context.Type == "Generator" && context.SourceItem is Generator generator)
-                        {
-                            <MudStack Spacing="2">
-                                @{
-                                    var editCostResources = GetOrCreateEditCostResources(generator);
-                                }
-                                @for (int index = 0; index < editCostResources.Count; index++)
-                                {
-                                    var cost = editCostResources[index];
-                                    var isLast = index == editCostResources.Count - 1;
-                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                                 Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-cost-resource-{generator.Name}-{index}")">
-                                            <MudSelectItem Value="@((string?)null)">Select Resource</MudSelectItem>
-                                            @foreach (var res in CalculationService.Resources)
-                                            {
-                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
-                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-cost-value-{generator.Name}-{index}")" />
-                                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"edit-cost-abbr-{generator.Name}-{index}")" />
-                                        
-                                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
-                                                   Color="@(isLast ? Color.Primary : Color.Error)"
-                                                   Style="height: 50px; width: 50px; margin-top: 3px;"
-                                                   OnClick="@(isLast ? () => AddEditCostResource(generator) : () => RemoveEditCostResource(generator, cost))">
-                                            @(isLast ? "Add" : "Remove")
-                                        </MudButton>
-                                    </MudStack>
-                                }
-                                <MudNumericField Value="@GetOrCreateEditCostRatio(generator)"
-                                                 ValueChanged="@((double value) => { editCostRatios[generator] = value; })"
-                                                 Label="CostRatio"
-                                                 Variant="Variant.Outlined"
-                                                 Dense="true"
-                                                 Min="1.0"
-                                                 Max="10.0"
-                                                 Step="0.01" />
-                            </MudStack>
-                        }
-                        else if (isEditing && context.Type == "Research" && context.SourceItem is Research research)
-                        {
-                            <MudStack Spacing="2">
-                                @{
-                                    var editResearchCostResources = GetOrCreateEditCostResources(research);
-                                }
-                                @for (int index = 0; index < editResearchCostResources.Count; index++)
-                                {
-                                    var cost = editResearchCostResources[index];
-                                    var isLast = index == editResearchCostResources.Count - 1;
-                                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                                        <MudSelect T="string" @bind-Value="@cost.ResourceName" Label="Resource" 
-                                                 Variant="Variant.Outlined" Style="flex: 1;" Id="@($"edit-research-cost-resource-{research.Name}-{index}")">
-                                            @foreach (var res in CalculationService.Resources)
-                                            {
-                                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                        <MudNumericField @bind-Value="@cost.Value" Label="Cost Amount" 
-                                                       Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"edit-research-cost-value-{research.Name}-{index}")" />
-                                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"edit-research-cost-abbr-{research.Name}-{index}")" />
-                                        
-                                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
-                                                   Color="@(isLast ? Color.Primary : Color.Error)"
-                                                   Style="height: 50px; width: 50px; margin-top: 3px;"
-                                                   OnClick="@(isLast ? () => AddEditCostResource(research) : () => RemoveEditCostResource(research, cost))">
-                                            @(isLast ? "Add" : "Remove")
-                                        </MudButton>
-                                    </MudStack>
-                                }
-                            </MudStack>
-                        }
-                        else if (isEditing)
-                        {
-                            <div>
-                                <MudStack Row="true" Spacing="2">
-                                    <MudNumericField @bind-Value="@editItem.Cost"
-                                                     Label="Cost"
-                                                     Variant="Variant.Outlined"
-                                                     Dense="true"
-                                                     Style="flex: 1;" />
-                                    <AbbreviationSelect @bind-Value="@editCostAbbr" />
-                                </MudStack>
-                                
-                                <div class="text-caption mt-1">Formatted: @NumberFormattingService.FormatNumber(editItem.Cost)</div>
-                            </div>
-                        }
-                        else
-                        {
-                            @if (context.ResourceCosts != null && context.ResourceCosts.Count > 0)
-                            {
-                                <MudStack Spacing="1">
-                                    @foreach (var cost in context.ResourceCosts)
-                                    {
-                                        <div>
-                                            <strong>@cost.Key:</strong> @NumberFormattingService.FormatNumber(cost.Value, 2)
-                                        </div>
-                                    }
-                                </MudStack>
-                            }
-                            else
-                            {
-                                <div>
-                                    <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(context.Cost)</MudText>
-                                </div>
-                            }
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Cascade Score" Align="Align.Right">
-                        <MudChip Size="Size.Small" Color="@GetCascadeScoreColor(context.CascadeScore)">
-                            @NumberFormattingService.FormatNumber(context.CascadeScore, 4)
-                        </MudChip>
-                    </MudTd>
-                    <MudTd DataLabel="Timer" Align="Align.Center">
-                        @{
-                            var timeToAfford = GetTimeToAfford(context);
-                        }
-                        @if (timeToAfford == int.MaxValue)
-                        {
-                            <MudChip Size="Size.Small" Color="Color.Error">
-                                Can't Afford
-                            </MudChip>
-                        }
-                        else if (timeToAfford > 0)
-                        {
-                            <MudChip Size="Size.Small" Color="Color.Warning">
-                                @FormatTime(timeToAfford)
-                            </MudChip>
-                        }
-                        else
-                        {
-                            <MudChip Size="Size.Small" Color="Color.Success">
-                                Ready
-                            </MudChip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Actions">
-                        @if (isEditing)
-                        {
-                            <MudButtonGroup Color="Color.Secondary" Variant="Variant.Outlined">
-                                <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Primary" 
-                                       Icon="@Icons.Material.Filled.Save" 
-                                       OnClick="async () => await SaveEdit(context)"/>
-                                <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Tertiary" 
-                                       Icon="@Icons.Material.Filled.Refresh" 
-                                       OnClick="() => CancelEdit(context)"/>
-                            </MudButtonGroup>
-                        }
-                        else
-                        {
-                            <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
-                                <MudIconButton  Size="Size.Small"
-                                       Color="Color.Success" 
-                                       Icon="@Icons.Material.Filled.ShoppingCart" 
-                                       OnClick="async () => await ApplyPurchase(context)"/>
-                                <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Warning" 
-                                       Icon="@Icons.Material.Filled.Edit" 
-                                       OnClick="() => StartEdit(context)"/>
-                                <MudIconButton  Size="Size.Small" 
-                                       Color="Color.Error" 
-                                       Icon="@Icons.Material.Filled.Delete" 
-                                       OnClick="async () => await DeleteItem(context)" />
-                            </MudButtonGroup>
-                        }
-                    </MudTd>
-                </RowTemplate>
-                <PagerContent>
-                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
-                        <MudTablePager />
-                        <MudStack Row="true" Spacing="2" Style="margin-right: 16px;">
-                            <MudIconButton Icon="@Icons.Material.Filled.Download" 
-                                           Color="Color.Success" 
-                                           Variant="Variant.Outlined"
-                                           OnClick="DownloadSaveFiles" 
-                                           Size="Size.Small" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Upload" 
-                                           Color="Color.Warning" 
-                                           Variant="Variant.Outlined"
-                                           OnClick="TriggerFileInput" 
-                                           Size="Size.Small" />
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" 
-                                           Color="Color.Error" 
-                                           Variant="Variant.Outlined" 
-                                           OnClick="OpenDeleteAllDialog" 
-                                           Size="Size.Small" />
-                        </MudStack>
-                    </MudStack>
-                </PagerContent>
-            </MudTable>
+            <UpgradeRankingsTable RankedUpgrades="@rankedUpgrades"
+                                  CalculationService="@CalculationService"
+                                  NumberFormattingService="@NumberFormattingService"
+                                  TimerService="@TimerService"
+                                  EditItems="@editItems"
+                                  EditResources="@editResources"
+                                  EditCostResources="@editCostResources"
+                                  EditResearchCostResources="@editResearchCostResources"
+                                  EditCostRatios="@editCostRatios"
+                                  EditCostAbbr="@editCostAbbr"
+                                  OnStartEdit="@StartEdit"
+                                  OnSaveEdit="@SaveEdit"
+                                  OnCancelEdit="@CancelEdit"
+                                  OnDeleteItem="@DeleteItem"
+                                  OnApplyPurchase="@ApplyPurchase"
+                                  OnEditResourcesChanged="@HandleEditResourcesChanged"
+                                  OnEditCostResourcesChanged="@HandleEditCostResourcesChanged"
+                                  OnEditResearchCostResourcesChanged="@HandleEditResearchCostResourcesChanged"
+                                  OnEditCostRatioChanged="@HandleEditCostRatioChanged"
+                                  OnDownloadSaveFiles="@DownloadSaveFiles"
+                                  OnTriggerFileInput="@TriggerFileInput"
+                                  OnHandleFileUpload="@HandleFileUpload"
+                                  OnOpenDeleteAllDialog="@OpenDeleteAllDialog" />
         </MudCardContent>
     </MudCard>
 </MudContainer>
 
 @code {
     [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
+    [Inject] private IUpgradeTimerService TimerService { get; set; } = default!;
     
     private List<UpgradeResult> rankedUpgrades = new();
     private Dictionary<object, UpgradeResult> editItems = new();
-    private Dictionary<string, DateTime> timerStartTimes = new();
-    private System.Threading.Timer? _timer;
-    private double _lastTotalProduction = 0;
-    private const double ProductionPerSecond = 1.0; // Production rate per second
     private string? editCostAbbr = null;
-    private InputFile fileInputElement = default!;
-    private class ResourceEntry
-    {
-        public string? ResourceName { get; set; }
-        public double Value { get; set; } = 0;
-        public string? Abbr { get; set; }
-    }
-
-    private class ResourceCostEntry
-    {
-        public string? ResourceName { get; set; }
-        public double Value { get; set; } = 0;
-        public string? Abbr { get; set; }
-    }
-
-    private Dictionary<Generator, List<ResourceEntry>> editResources = new();
-    private Dictionary<Generator, List<ResourceCostEntry>> editCostResources = new();
-    private Dictionary<Research, List<ResourceCostEntry>> editResearchCostResources = new();
+    private Dictionary<Generator, List<ResourceEntryViewModel>> editResources = new();
+    private Dictionary<Generator, List<ResourceCostEntryViewModel>> editCostResources = new();
+    private Dictionary<Research, List<ResourceCostEntryViewModel>> editResearchCostResources = new();
     private Dictionary<Generator, double> editCostRatios = new();
 
     protected override async Task OnInitializedAsync()
     {
         await CalculationService.InitializeAsync();
         RefreshRankings();
-        _lastTotalProduction = CalculationService.GetTotalProduction();
         
-        // Initialize timer to update every second
-        _timer = new System.Threading.Timer(TimerCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        // Start timer service
+        TimerService.TimerTick += OnTimerTick;
+        TimerService.StartTimer();
+    }
+
+    public void Dispose()
+    {
+        TimerService.TimerTick -= OnTimerTick;
+        TimerService.StopTimer();
+    }
+
+    private void OnTimerTick(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private void RefreshRankings()
@@ -501,7 +119,7 @@
             }
         }
         // Clear timer cache to force recalculation
-        timerStartTimes.Clear();
+        TimerService.ClearCache();
         StateHasChanged();
     }
 
@@ -534,15 +152,15 @@
             {
                 if (!editResources.ContainsKey(generator))
                 {
-                    var resourceEntries = new List<ResourceEntry>();
+                    var resourceEntries = new List<ResourceEntryViewModel>();
                     if (generator.Resources != null && generator.Resources.Count > 0)
                     {
-                        // Convert generator Resources to ResourceEntry list
+                        // Convert generator Resources to ResourceEntryViewModel list
                         foreach (var resource in generator.Resources)
                         {
                             var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(resource.Value);
                             
-                            resourceEntries.Add(new ResourceEntry
+                            resourceEntries.Add(new ResourceEntryViewModel
                             {
                                 ResourceName = resource.Key,
                                 Value = baseValue,
@@ -556,15 +174,15 @@
                 // Initialize resource cost entries for generators
                 if (!editCostResources.ContainsKey(generator))
                 {
-                    var costEntries = new List<ResourceCostEntry>();
+                    var costEntries = new List<ResourceCostEntryViewModel>();
                     if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
                     {
-                        // Convert generator ResourceCosts to ResourceCostEntry list
+                        // Convert generator ResourceCosts to ResourceCostEntryViewModel list
                         foreach (var cost in generator.ResourceCosts)
                         {
                             var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(cost.Value);
                             
-                            costEntries.Add(new ResourceCostEntry
+                            costEntries.Add(new ResourceCostEntryViewModel
                             {
                                 ResourceName = cost.Key,
                                 Value = baseValue,
@@ -586,15 +204,15 @@
                 // Initialize resource cost entries for research
                 if (!editResearchCostResources.ContainsKey(research))
                 {
-                    var costEntries = new List<ResourceCostEntry>();
+                    var costEntries = new List<ResourceCostEntryViewModel>();
                     if (research.ResourceCosts != null && research.ResourceCosts.Count > 0)
                     {
-                        // Convert research ResourceCosts to ResourceCostEntry list
+                        // Convert research ResourceCosts to ResourceCostEntryViewModel list
                         foreach (var cost in research.ResourceCosts)
                         {
                             var (baseValue, abbr) = NumberFormattingService.ParseAbbreviation(cost.Value);
                             
-                            costEntries.Add(new ResourceCostEntry
+                            costEntries.Add(new ResourceCostEntryViewModel
                             {
                                 ResourceName = cost.Key,
                                 Value = baseValue,
@@ -616,97 +234,28 @@
         return editItems[item.SourceItem];
     }
 
-    private List<ResourceEntry> GetOrCreateEditResources(Generator generator)
+    private void HandleEditResourcesChanged((Generator generator, List<ResourceEntryViewModel> entries) args)
     {
-        if (!editResources.ContainsKey(generator))
-        {
-            editResources[generator] = new List<ResourceEntry>();
-        }
-        return editResources[generator];
-    }
-
-    private void AddEditResource(Generator generator)
-    {
-        var resources = GetOrCreateEditResources(generator);
-        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        resources.Add(new ResourceEntry { ResourceName = firstResourceName, Value = 0 });
+        editResources[args.generator] = args.entries;
         StateHasChanged();
     }
 
-    private void RemoveEditResource(Generator generator, ResourceEntry resource)
+    private void HandleEditCostResourcesChanged((Generator generator, List<ResourceCostEntryViewModel> entries) args)
     {
-        var resources = GetOrCreateEditResources(generator);
-        // Prevent removing the last item to ensure there's always at least one entry
-        if (resources.Count > 1)
-        {
-            resources.Remove(resource);
-            StateHasChanged();
-        }
-    }
-
-    private List<ResourceCostEntry> GetOrCreateEditCostResources(Generator generator)
-    {
-        if (!editCostResources.ContainsKey(generator))
-        {
-            editCostResources[generator] = new List<ResourceCostEntry>();
-        }
-        return editCostResources[generator];
-    }
-
-    private void AddEditCostResource(Generator generator)
-    {
-        var costResources = GetOrCreateEditCostResources(generator);
-        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        costResources.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
+        editCostResources[args.generator] = args.entries;
         StateHasChanged();
     }
 
-    private void RemoveEditCostResource(Generator generator, ResourceCostEntry cost)
+    private void HandleEditResearchCostResourcesChanged((Research research, List<ResourceCostEntryViewModel> entries) args)
     {
-        var costResources = GetOrCreateEditCostResources(generator);
-        // Prevent removing the last item to ensure there's always at least one entry
-        if (costResources.Count > 1)
-        {
-            costResources.Remove(cost);
-            StateHasChanged();
-        }
-    }
-
-    private List<ResourceCostEntry> GetOrCreateEditCostResources(Research research)
-    {
-        if (!editResearchCostResources.ContainsKey(research))
-        {
-            editResearchCostResources[research] = new List<ResourceCostEntry>();
-        }
-        return editResearchCostResources[research];
-    }
-
-    private void AddEditCostResource(Research research)
-    {
-        var costResources = GetOrCreateEditCostResources(research);
-        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        costResources.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
+        editResearchCostResources[args.research] = args.entries;
         StateHasChanged();
     }
 
-    private void RemoveEditCostResource(Research research, ResourceCostEntry cost)
+    private void HandleEditCostRatioChanged((Generator generator, double ratio) args)
     {
-        var costResources = GetOrCreateEditCostResources(research);
-        // Prevent removing the last item to ensure there's always at least one entry
-        if (costResources.Count > 1)
-        {
-            costResources.Remove(cost);
-            StateHasChanged();
-        }
-    }
-
-    private double GetOrCreateEditCostRatio(Generator generator)
-    {
-        if (!editCostRatios.ContainsKey(generator))
-        {
-            editCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
-        }
-        return editCostRatios[generator];
+        editCostRatios[args.generator] = args.ratio;
+        StateHasChanged();
     }
 
     private async Task ApplyPurchase(UpgradeResult upgrade)
@@ -932,19 +481,6 @@
         await CalculationService.SaveStateAsync();
     }
 
-    private Color GetCascadeScoreColor(double cascadeScore)
-    {
-        if (cascadeScore > 10) return Color.Success;
-        if (cascadeScore > 1) return Color.Warning;
-        if (cascadeScore > 0) return Color.Info;
-        return Color.Default;
-    }
-
-    private double GetGeneratorContribution(Generator generator)
-    {
-        // BaseProduction already includes all applied research multipliers
-        return generator.GetCurrentProduction();
-    }
 
 
     private async Task OpenAddGeneratorDialog()
@@ -1073,9 +609,6 @@
             // Reload the state from storage
             await CalculationService.LoadStateAsync();
             
-            // Update total production to trigger recalculation
-            _lastTotalProduction = CalculationService.GetTotalProduction();
-            
             // Refresh rankings to recalculate cascade scores and timers
             RefreshRankings();
             
@@ -1105,191 +638,6 @@
         }
     }
 
-    private void TimerCallback(object? state)
-    {
-        InvokeAsync(() =>
-        {
-            // Check if total production changed
-            var currentProduction = CalculationService.GetTotalProduction();
-            if (Math.Abs(currentProduction - _lastTotalProduction) > 0.001)
-            {
-                _lastTotalProduction = currentProduction;
-                // Clear timer cache to force recalculation
-                timerStartTimes.Clear();
-            }
-            StateHasChanged();
-        });
-    }
-
-    private int GetTimeToAfford(UpgradeResult item)
-    {
-        double timeNeeded = double.MaxValue;
-        
-        // Check if item has resource costs
-        if (item.ResourceCosts != null && item.ResourceCosts.Count > 0)
-        {
-            // Multiple resource costs - find the bottleneck (longest time to afford)
-            var productionByResource = CalculationService.GetTotalProductionByResource();
-            double maxTime = 0;
-            
-            foreach (var cost in item.ResourceCosts)
-            {
-                if (productionByResource.ContainsKey(cost.Key))
-                {
-                    double resourceProduction = productionByResource[cost.Key];
-                    if (resourceProduction > 0)
-                    {
-                        double resourceTime = cost.Value / resourceProduction;
-                        if (resourceTime > maxTime)
-                        {
-                            maxTime = resourceTime;
-                        }
-                    }
-                    else
-                    {
-                        // Resource not being produced - can't afford
-                        return int.MaxValue;
-                    }
-                }
-                else
-                {
-                    // Resource not being produced - can't afford
-                    return int.MaxValue;
-                }
-            }
-            
-            timeNeeded = maxTime;
-        }
-        else
-        {
-            var totalProduction = CalculationService.GetTotalProduction();
-            
-            // If no production, return a large number
-            if (totalProduction <= 0)
-            {
-                return int.MaxValue;
-            }
-            
-            // Calculate production per second (assuming total production is per second)
-            var productionPerSecond = totalProduction * ProductionPerSecond;
-            
-            // Calculate time needed to afford this item (in seconds)
-            timeNeeded = item.Cost / productionPerSecond;
-        }
-        
-        // Get the timer key for this item
-        var timerKey = $"{item.Type}_{item.ItemName}";
-        
-        // Check if we need to recalculate (production changed or timer expired)
-        var needsRecalculation = !timerStartTimes.ContainsKey(timerKey);
-        
-        if (!needsRecalculation)
-        {
-            var endTime = timerStartTimes[timerKey];
-            var elapsed = (DateTime.Now - (endTime.AddSeconds(-timeNeeded))).TotalSeconds;
-            
-            // Recalculate time needed with current production
-            double currentTimeNeeded = double.MaxValue;
-            if (item.ResourceCosts != null && item.ResourceCosts.Count > 0)
-            {
-                var productionByResource = CalculationService.GetTotalProductionByResource();
-                double maxTime = 0;
-                
-                foreach (var cost in item.ResourceCosts)
-                {
-                    if (productionByResource.ContainsKey(cost.Key))
-                    {
-                        double resourceProduction = productionByResource[cost.Key];
-                        if (resourceProduction > 0)
-                        {
-                            double resourceTime = cost.Value / resourceProduction;
-                            if (resourceTime > maxTime)
-                            {
-                                maxTime = resourceTime;
-                            }
-                        }
-                        else
-                        {
-                            currentTimeNeeded = double.MaxValue;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        currentTimeNeeded = double.MaxValue;
-                        break;
-                    }
-                }
-                
-                if (currentTimeNeeded != double.MaxValue)
-                {
-                    currentTimeNeeded = maxTime;
-                }
-            }
-            else
-            {
-                var totalProduction = CalculationService.GetTotalProduction();
-                if (totalProduction > 0)
-                {
-                    var productionPerSecond = totalProduction * ProductionPerSecond;
-                    currentTimeNeeded = item.Cost / productionPerSecond;
-                }
-            }
-            
-            // Recalculate if production changed significantly (more than 1% difference)
-            if (currentTimeNeeded != double.MaxValue && timeNeeded != double.MaxValue &&
-                Math.Abs(currentTimeNeeded - timeNeeded) / Math.Max(currentTimeNeeded, 1) > 0.01)
-            {
-                needsRecalculation = true;
-            }
-        }
-        
-        if (needsRecalculation)
-        {
-            // Recalculate based on current production
-            if (item.AvailableAt.HasValue)
-            {
-                timerStartTimes[timerKey] = item.AvailableAt.Value;
-            }
-        }
-        
-        if (!item.AvailableAt.HasValue)
-        {
-            return int.MaxValue; // Can't afford
-        }
-        
-        var remaining = (int)(item.AvailableAt.Value - DateTime.Now).TotalSeconds;
-        return Math.Max(0, remaining);
-    }
-
-    private string FormatTime(int seconds)
-    {
-        if (seconds < 0) return "0s";
-        int years = seconds / (365 * 24 * 60 * 60);
-        int remaining = seconds % (365 * 24 * 60 * 60);
-
-        int weeks = remaining / (7 * 24 * 60 * 60);
-        remaining = remaining % (7 * 24 * 60 * 60);
-
-        int days = remaining / (24 * 60 * 60);
-        remaining = remaining % (24 * 60 * 60);
-
-        int hours = remaining / (60 * 60);
-        remaining = remaining % (60 * 60);
-
-        int minutes = remaining / 60;
-        int secs = remaining % 60;
-
-        var parts = new List<string>();
-        if (years > 0) parts.Add($"{years}y");
-        if (weeks > 0) parts.Add($"{weeks}w");
-        if (days > 0) parts.Add($"{days}d");
-        if (hours > 0) parts.Add($"{hours}h");
-        if (minutes > 0) parts.Add($"{minutes}m");
-        if (secs > 0 || parts.Count == 0) parts.Add($"{secs}s");
-        
-        return string.Join(" ", parts);
-    }
 
     private async Task OpenPrestigeDialog()
     {
@@ -1309,10 +657,5 @@
                 Snackbar.Add($"Prestige completed! Production: {productionMultiplier}x, Cost: {costMultiplier}x", Severity.Success);
             }
         }
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
     }
 }

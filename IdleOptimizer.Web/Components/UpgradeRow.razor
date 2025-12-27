@@ -1,0 +1,325 @@
+@using IdleOptimizer.Models
+@using IdleOptimizer.ViewModels
+@using IdleOptimizer.Services
+@using MudBlazor
+
+<MudTd DataLabel="Item Name">
+    @if (IsEditing)
+    {
+        <MudTextField @bind-Value="@EditItem.ItemName" Variant="Variant.Outlined" Dense="true" />
+    }
+    else
+    {
+        @Item.ItemName
+    }
+</MudTd>
+<MudTd DataLabel="Type">
+    @if (IsEditing)
+    {
+        <MudSelect T="string" @bind-Value="@EditItem.Type" Variant="Variant.Outlined" Dense="true">
+            <MudSelectItem Value="@("Generator")">Generator</MudSelectItem>
+            <MudSelectItem Value="@("Research")">Research</MudSelectItem>
+        </MudSelect>
+    }
+    else
+    {
+        <MudChip Size="Size.Small" Color="@(Item.Type == "Generator" ? Color.Primary : Color.Secondary)">
+            @Item.Type
+        </MudChip>
+    }
+</MudTd>
+<MudTd DataLabel="Contribute" Align="Align.Right">
+    @if (Item.Type == "Generator" && Item.SourceItem is Generator generator)
+    {
+        @if (IsEditing)
+        {
+            <MudStack Spacing="2">
+                @{
+                    var editResources = GetOrCreateEditResources(generator);
+                }
+                <ResourceEntryEditor Entries="@editResources" 
+                                     EntriesChanged="@((List<ResourceEntryViewModel> entries) => OnEditResourcesChanged.InvokeAsync((generator, entries)))"
+                                     CalculationService="@CalculationService" 
+                                     ItemIdPrefix="@($"edit-resource-{generator.Name}")" />
+                <MudNumericField @bind-Value="@EditItem.Count"
+                                 Label="Count"
+                                 Variant="Variant.Outlined"
+                                 Dense="true"
+                                 Style="flex: 1;" />
+            </MudStack>
+        }
+        else
+        {
+            var contribution = GetGeneratorContribution(generator);
+            var resources = generator.GetCurrentProductionByResource();
+            
+            <MudStack Spacing="1">
+                @if (resources.Count > 1)
+                {
+                    @foreach (var resource in resources)
+                    {
+                        var resourceTotalProd = CalculationService.GetTotalProductionByResourceName(resource.Key);
+                        var percentage = resourceTotalProd > 0 ? (resource.Value / resourceTotalProd) * 100 : 0;
+                        <div>
+                            <strong>@resource.Key:</strong> @NumberFormattingService.FormatNumber(resource.Value, 2)
+                        </div>
+                        <div class="text-caption" style="color: #90caf9;">
+                            Total: @NumberFormattingService.FormatNumber(resourceTotalProd, 2) (@percentage.ToString("F1")%)
+                        </div>
+                    }
+                }
+                else
+                {
+                    var totalProduction = CalculationService.GetTotalProductionByResourceName(resources.Keys.First());
+                    var percentage = totalProduction > 0 ? (contribution / totalProduction) * 100 : 0;
+                    <MudStack Row="true" Spacing="2">
+                        <strong>@NumberFormattingService.FormatNumber(generator.Resources.Values.First(), 2) x @generator.Count = @NumberFormattingService.FormatNumber(contribution, 2)</strong>
+                        <div class="text-caption" style="color: #90caf9;">
+                            (@percentage.ToString("F1")%)
+                        </div>
+                    </MudStack>
+                }
+            </MudStack>
+        }
+    }
+    else if (Item.Type == "Research" && Item.SourceItem is Research research)
+    {
+        @if (research.TargetGenerators != null && research.TargetGenerators.Count > 0)
+        {
+            @foreach (var target in research.TargetGenerators)
+            {
+                <div class="mb-1">
+                    @target <span style="color: #4caf50; font-weight: bold;">x@(research.GetMultiplier(target).ToString("F2"))</span>
+                </div>
+            }
+        }
+        else
+        {
+            <span>-</span>
+        }
+        <MudDivider class="mb-1"/>
+        @if (Item.GainByResource != null && Item.GainByResource.Count > 0)
+        {
+            <MudStack Spacing="1">
+                @foreach (var gain in Item.GainByResource)
+                {
+                    @if (gain.Value != 0)
+                    {
+                        <div>
+                            <strong>@gain.Key:</strong> @NumberFormattingService.FormatNumber(gain.Value, 2)
+                        </div>
+                    }
+                }
+            </MudStack>
+        }
+        else
+        {
+            <div>
+                <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(Item.Gain, 2)</MudText>
+            </div>
+        }
+    }
+</MudTd>
+<MudTd DataLabel="Cost" Align="Align.Right">
+    @if (IsEditing && Item.Type == "Generator" && Item.SourceItem is Generator generator)
+    {
+        <MudStack Spacing="2">
+            @{
+                var editCostResources = GetOrCreateEditCostResources(generator);
+            }
+            <ResourceCostEntryEditor Entries="@editCostResources" 
+                                     EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => OnEditCostResourcesChanged.InvokeAsync((generator, entries)))"
+                                     CalculationService="@CalculationService" 
+                                     ItemIdPrefix="@($"edit-cost-{generator.Name}")" />
+            <MudNumericField Value="@GetOrCreateEditCostRatio(generator)"
+                             ValueChanged="@((double value) => OnEditCostRatioChanged.InvokeAsync((generator, value)))"
+                             Label="CostRatio"
+                             Variant="Variant.Outlined"
+                             Dense="true"
+                             Min="1.0"
+                             Max="10.0"
+                             Step="0.01" />
+        </MudStack>
+    }
+    else if (IsEditing && Item.Type == "Research" && Item.SourceItem is Research research)
+    {
+        <MudStack Spacing="2">
+            @{
+                var editResearchCostResources = GetOrCreateEditCostResources(research);
+            }
+            <ResourceCostEntryEditor Entries="@editResearchCostResources" 
+                                     EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => OnEditResearchCostResourcesChanged.InvokeAsync((research, entries)))"
+                                     CalculationService="@CalculationService" 
+                                     ItemIdPrefix="@($"edit-research-cost-{research.Name}")"
+                                     ShowSelectResourceOption="false" />
+        </MudStack>
+    }
+    else if (IsEditing)
+    {
+        <div>
+            <MudStack Row="true" Spacing="2">
+                <MudNumericField @bind-Value="@EditItem.Cost"
+                                 Label="Cost"
+                                 Variant="Variant.Outlined"
+                                 Dense="true"
+                                 Style="flex: 1;" />
+                <AbbreviationSelect @bind-Value="@EditCostAbbr" />
+            </MudStack>
+            
+            <div class="text-caption mt-1">Formatted: @NumberFormattingService.FormatNumber(EditItem.Cost)</div>
+        </div>
+    }
+    else
+    {
+        @if (Item.ResourceCosts != null && Item.ResourceCosts.Count > 0)
+        {
+            <MudStack Spacing="1">
+                @foreach (var cost in Item.ResourceCosts)
+                {
+                    <div>
+                        <strong>@cost.Key:</strong> @NumberFormattingService.FormatNumber(cost.Value, 2)
+                    </div>
+                }
+            </MudStack>
+        }
+        else
+        {
+            <div>
+                <MudText Typo="Typo.body1" Style="font-weight: bold;">@NumberFormattingService.FormatNumber(Item.Cost)</MudText>
+            </div>
+        }
+    }
+</MudTd>
+<MudTd DataLabel="Cascade Score" Align="Align.Right">
+    <MudChip Size="Size.Small" Color="@GetCascadeScoreColor(Item.CascadeScore)">
+        @NumberFormattingService.FormatNumber(Item.CascadeScore, 4)
+    </MudChip>
+</MudTd>
+<MudTd DataLabel="Timer" Align="Align.Center">
+    @{
+        var timeToAfford = TimerService.GetTimeToAfford(Item);
+    }
+    @if (timeToAfford == int.MaxValue)
+    {
+        <MudChip Size="Size.Small" Color="Color.Error">
+            Can't Afford
+        </MudChip>
+    }
+    else if (timeToAfford > 0)
+    {
+        <MudChip Size="Size.Small" Color="Color.Warning">
+            @TimerService.FormatTime(timeToAfford)
+        </MudChip>
+    }
+    else
+    {
+        <MudChip Size="Size.Small" Color="Color.Success">
+            Ready
+        </MudChip>
+    }
+</MudTd>
+<MudTd DataLabel="Actions">
+    @if (IsEditing)
+    {
+        <MudButtonGroup Color="Color.Secondary" Variant="Variant.Outlined">
+            <MudIconButton  Size="Size.Small" 
+                   Color="Color.Primary" 
+                   Icon="@Icons.Material.Filled.Save" 
+                   OnClick="async () => await OnSaveEdit.InvokeAsync(Item)"/>
+            <MudIconButton  Size="Size.Small" 
+                   Color="Color.Tertiary" 
+                   Icon="@Icons.Material.Filled.Refresh" 
+                   OnClick="() => OnCancelEdit.InvokeAsync(Item)"/>
+        </MudButtonGroup>
+    }
+    else
+    {
+        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined">
+            <MudIconButton  Size="Size.Small"
+                   Color="Color.Success" 
+                   Icon="@Icons.Material.Filled.ShoppingCart" 
+                   OnClick="async () => await OnApplyPurchase.InvokeAsync(Item)"/>
+            <MudIconButton  Size="Size.Small" 
+                   Color="Color.Warning" 
+                   Icon="@Icons.Material.Filled.Edit" 
+                   OnClick="() => OnStartEdit.InvokeAsync(Item)"/>
+            <MudIconButton  Size="Size.Small" 
+                   Color="Color.Error" 
+                   Icon="@Icons.Material.Filled.Delete" 
+                   OnClick="async () => await OnDeleteItem.InvokeAsync(Item)" />
+        </MudButtonGroup>
+    }
+</MudTd>
+
+@code {
+    [Parameter] public UpgradeResult Item { get; set; } = default!;
+    [Parameter] public bool IsEditing { get; set; }
+    [Parameter] public UpgradeResult EditItem { get; set; } = default!;
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Parameter] public INumberFormattingService NumberFormattingService { get; set; } = default!;
+    [Parameter] public IUpgradeTimerService TimerService { get; set; } = default!;
+    [Parameter] public Dictionary<Generator, List<ResourceEntryViewModel>> EditResources { get; set; } = new();
+    [Parameter] public Dictionary<Generator, List<ResourceCostEntryViewModel>> EditCostResources { get; set; } = new();
+    [Parameter] public Dictionary<Research, List<ResourceCostEntryViewModel>> EditResearchCostResources { get; set; } = new();
+    [Parameter] public Dictionary<Generator, double> EditCostRatios { get; set; } = new();
+    [Parameter] public string? EditCostAbbr { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnStartEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnSaveEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnCancelEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnDeleteItem { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnApplyPurchase { get; set; }
+    [Parameter] public EventCallback<(Generator generator, List<ResourceEntryViewModel> entries)> OnEditResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Generator generator, List<ResourceCostEntryViewModel> entries)> OnEditCostResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Research research, List<ResourceCostEntryViewModel> entries)> OnEditResearchCostResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Generator generator, double ratio)> OnEditCostRatioChanged { get; set; }
+
+    private List<ResourceEntryViewModel> GetOrCreateEditResources(Generator generator)
+    {
+        if (!EditResources.ContainsKey(generator))
+        {
+            EditResources[generator] = new List<ResourceEntryViewModel>();
+        }
+        return EditResources[generator];
+    }
+
+    private List<ResourceCostEntryViewModel> GetOrCreateEditCostResources(Generator generator)
+    {
+        if (!EditCostResources.ContainsKey(generator))
+        {
+            EditCostResources[generator] = new List<ResourceCostEntryViewModel>();
+        }
+        return EditCostResources[generator];
+    }
+
+    private List<ResourceCostEntryViewModel> GetOrCreateEditCostResources(Research research)
+    {
+        if (!EditResearchCostResources.ContainsKey(research))
+        {
+            EditResearchCostResources[research] = new List<ResourceCostEntryViewModel>();
+        }
+        return EditResearchCostResources[research];
+    }
+
+    private double GetOrCreateEditCostRatio(Generator generator)
+    {
+        if (!EditCostRatios.ContainsKey(generator))
+        {
+            EditCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
+        }
+        return EditCostRatios[generator];
+    }
+
+    private Color GetCascadeScoreColor(double cascadeScore)
+    {
+        if (cascadeScore > 10) return Color.Success;
+        if (cascadeScore > 1) return Color.Warning;
+        if (cascadeScore > 0) return Color.Info;
+        return Color.Default;
+    }
+
+    private double GetGeneratorContribution(Generator generator)
+    {
+        // BaseProduction already includes all applied research multipliers
+        return generator.GetCurrentProduction();
+    }
+}

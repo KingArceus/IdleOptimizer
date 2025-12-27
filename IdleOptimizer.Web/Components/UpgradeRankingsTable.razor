@@ -1,0 +1,109 @@
+@using IdleOptimizer.Models
+@using IdleOptimizer.ViewModels
+@using IdleOptimizer.Services
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+
+<InputFile OnChange="HandleFileUpload" multiple accept=".csv" style="display: none;" @ref="fileInputElement" id="csvFileInput" />
+
+<MudTable Items="@RankedUpgrades" Hover="true" Dense="true" Striped="true" Bordered="true" 
+          Elevation="2" Class="mt-4">
+    <HeaderContent>
+        <MudTh>Item Name</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh Align="Align.Right">Contribute</MudTh>
+        <MudTh Align="Align.Right">Cost</MudTh>
+        <MudTh Align="Align.Right">Cascade Score</MudTh>
+        <MudTh Align="Align.Center">Timer</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <UpgradeRow Item="@context" 
+                    IsEditing="@IsEditing(context)" 
+                    EditItem="@GetOrCreateEditItem(context)"
+                    CalculationService="@CalculationService"
+                    NumberFormattingService="@NumberFormattingService"
+                    TimerService="@TimerService"
+                    EditResources="@EditResources"
+                    EditCostResources="@EditCostResources"
+                    EditResearchCostResources="@EditResearchCostResources"
+                    EditCostRatios="@EditCostRatios"
+                    EditCostAbbr="@EditCostAbbr"
+                    OnStartEdit="@OnStartEdit"
+                    OnSaveEdit="@OnSaveEdit"
+                    OnCancelEdit="@OnCancelEdit"
+                    OnDeleteItem="@OnDeleteItem"
+                    OnApplyPurchase="@OnApplyPurchase"
+                    OnEditResourcesChanged="@OnEditResourcesChanged"
+                    OnEditCostResourcesChanged="@OnEditCostResourcesChanged"
+                    OnEditResearchCostResourcesChanged="@OnEditResearchCostResourcesChanged"
+                    OnEditCostRatioChanged="@OnEditCostRatioChanged" />
+    </RowTemplate>
+    <PagerContent>
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+            <MudTablePager />
+            <MudStack Row="true" Spacing="2" Style="margin-right: 16px;">
+                <MudIconButton Icon="@Icons.Material.Filled.Download" 
+                               Color="Color.Success" 
+                               Variant="Variant.Outlined"
+                               OnClick="OnDownloadSaveFiles" 
+                               Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.Upload" 
+                               Color="Color.Warning" 
+                               Variant="Variant.Outlined"
+                               OnClick="OnTriggerFileInput" 
+                               Size="Size.Small" />
+                <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep" 
+                               Color="Color.Error" 
+                               Variant="Variant.Outlined" 
+                               OnClick="OnOpenDeleteAllDialog" 
+                               Size="Size.Small" />
+            </MudStack>
+        </MudStack>
+    </PagerContent>
+</MudTable>
+
+@code {
+    [Parameter] public List<UpgradeResult> RankedUpgrades { get; set; } = new();
+    [Parameter] public ICalculationService CalculationService { get; set; } = default!;
+    [Parameter] public INumberFormattingService NumberFormattingService { get; set; } = default!;
+    [Parameter] public IUpgradeTimerService TimerService { get; set; } = default!;
+    [Parameter] public Dictionary<object, UpgradeResult> EditItems { get; set; } = new();
+    [Parameter] public Dictionary<Generator, List<ResourceEntryViewModel>> EditResources { get; set; } = new();
+    [Parameter] public Dictionary<Generator, List<ResourceCostEntryViewModel>> EditCostResources { get; set; } = new();
+    [Parameter] public Dictionary<Research, List<ResourceCostEntryViewModel>> EditResearchCostResources { get; set; } = new();
+    [Parameter] public Dictionary<Generator, double> EditCostRatios { get; set; } = new();
+    [Parameter] public string? EditCostAbbr { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnStartEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnSaveEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnCancelEdit { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnDeleteItem { get; set; }
+    [Parameter] public EventCallback<UpgradeResult> OnApplyPurchase { get; set; }
+    [Parameter] public EventCallback<(Generator generator, List<ResourceEntryViewModel> entries)> OnEditResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Generator generator, List<ResourceCostEntryViewModel> entries)> OnEditCostResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Research research, List<ResourceCostEntryViewModel> entries)> OnEditResearchCostResourcesChanged { get; set; }
+    [Parameter] public EventCallback<(Generator generator, double ratio)> OnEditCostRatioChanged { get; set; }
+    [Parameter] public EventCallback OnDownloadSaveFiles { get; set; }
+    [Parameter] public EventCallback OnTriggerFileInput { get; set; }
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnHandleFileUpload { get; set; }
+    [Parameter] public EventCallback OnOpenDeleteAllDialog { get; set; }
+    
+    private InputFile fileInputElement = default!;
+
+    private bool IsEditing(UpgradeResult item)
+    {
+        return item.SourceItem != null && EditItems.ContainsKey(item.SourceItem);
+    }
+
+    private UpgradeResult GetOrCreateEditItem(UpgradeResult item)
+    {
+        if (item.SourceItem == null) return item;
+        return EditItems.ContainsKey(item.SourceItem) ? EditItems[item.SourceItem] : item;
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await OnHandleFileUpload.InvokeAsync(e);
+    }
+}

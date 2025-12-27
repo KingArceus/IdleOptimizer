@@ -1,0 +1,39 @@
+@using MudBlazor
+
+<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" 
+            OnClick="OnAddGenerator" Class="mb-2 mr-2">
+            Generator
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Add" 
+                OnClick="OnAddResearch" Class="mb-2 mr-2">
+            Research
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" 
+                OnClick="OnAddResource" Class="mb-2">
+            Resource
+        </MudButton>
+    </MudStack>
+
+    <MudSpacer />
+
+    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Refresh" 
+            OnClick="OnRefresh" Class="mb-2 ml-2">
+            Refresh
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" 
+                OnClick="OnPrestige" Class="mb-2 ml-2">
+            Prestige
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter] public EventCallback OnAddGenerator { get; set; }
+    [Parameter] public EventCallback OnAddResearch { get; set; }
+    [Parameter] public EventCallback OnAddResource { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback OnPrestige { get; set; }
+}

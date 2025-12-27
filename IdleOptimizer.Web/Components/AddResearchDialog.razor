@@ -1,4 +1,5 @@
 @using IdleOptimizer.Models
+@using IdleOptimizer.ViewModels
 @using IdleOptimizer.Services
 @using MudBlazor
 
@@ -55,32 +56,11 @@
                 </MudSelect>
             </MudStack>
 
-            <MudStack Spacing="2" Class="mt-2">
-                @for (int index = 0; index < resourceCosts.Count; index++)
-                {
-                    var cost = resourceCosts[index];
-                    var isLast = index == resourceCosts.Count - 1;
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudSelect ShrinkLabel T="string" @bind-Value="@cost.ResourceName" Label="Resource" FullWidth=true
-                                Variant="Variant.Outlined" Style="flex: 1;" Id="@($"research-cost-resource-{index}")">
-                            @foreach (var res in CalculationService.Resources)
-                            {
-                                <MudSelectItem Value="@res.Name">@res.Name</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudNumericField ShrinkLabel @bind-Value="@cost.Value" Label="Cost Amount" 
-                                    Variant="Variant.Outlined" Min="0.01" Style="flex: 1;" Id="@($"research-cost-value-{index}")" />
-                        <AbbreviationSelect @bind-Value="@cost.Abbr" Id="@($"research-cost-abbr-{index}")" />
-                        
-                        <MudButton Size="Size.Small" Variant="Variant.Filled" 
-                                   Color="@(isLast ? Color.Primary : Color.Error)"
-                                   Style="height: 50px; width: 50px; margin-top: 3px;"
-                                   OnClick="@(isLast ? () => AddResourceCost() : () => RemoveResourceCost(cost))">
-                            @(isLast ? "Add" : "Remove")
-                        </MudButton>
-                    </MudStack>
-                }
-            </MudStack>
+            <ResourceCostEntryEditor Entries="@resourceCosts" 
+                                    EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => { resourceCosts = entries; })"
+                                    CalculationService="@CalculationService" 
+                                    ItemIdPrefix="research-cost"
+                                    ShowSelectResourceOption="false" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -105,46 +85,24 @@
     private bool success;
     private string[] errors = { };
 
-    private class ResourceCostEntry
-    {
-        public string? ResourceName { get; set; }
-        public double Value { get; set; } = 0;
-        public string? Abbr { get; set; }
-    }
-
     private class TargetMultiplierEntry
     {
         public string? GeneratorName { get; set; }
         public double MultiplierValue { get; set; } = 1.0;
     }
 
-    private List<ResourceCostEntry> resourceCosts = new();
+    private List<ResourceCostEntryViewModel> resourceCosts = new();
     private List<TargetMultiplierEntry> targetMultipliers = new();
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        resourceCosts.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
+        resourceCosts.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
         
         // Initialize with one target multiplier entry - default to "All" if generators exist
         var defaultGenerator = CalculationService.Generators.Any() ? "All" : null;
         targetMultipliers.Add(new TargetMultiplierEntry { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
-    }
-
-    private void AddResourceCost()
-    {
-        var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        resourceCosts.Add(new ResourceCostEntry { ResourceName = firstResourceName, Value = 0 });
-    }
-
-    private void RemoveResourceCost(ResourceCostEntry cost)
-    {
-        // Prevent removing the last item to ensure there's always at least one entry
-        if (resourceCosts.Count > 1)
-        {
-            resourceCosts.Remove(cost);
-        }
     }
 
     private void AddTargetMultiplier()
