@@ -1,4 +1,6 @@
+@using IdleOptimizer.Components
 @using MudBlazor
+@inherits FormDialogBase
 
 <MudDialog>
     <TitleContent>
@@ -9,7 +11,7 @@
             <strong>Warning:</strong> This will reset all progress including generator counts, applied research, and current production/costs. 
             Base values will be multiplied by the specified multipliers.
         </MudAlert>
-        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+        <MudForm @ref="Form" @bind-IsValid="@Success" @bind-Errors="@Errors">
             <MudNumericField @bind-Value="@productionMultiplier" 
                            Label="Production Multiplier" 
                            Variant="Variant.Outlined" 
@@ -27,32 +29,18 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="Confirm" Disabled="!success">
+        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="!Success">
             Confirm Prestige
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
-
-    private MudForm? form;
-    private bool success;
-    private string[] errors = { };
     private double productionMultiplier = 1.0;
     private double costMultiplier = 1.0;
 
-    private void Cancel()
+    protected override async Task OnSaveAsync()
     {
-        MudDialog.Cancel();
-    }
-
-    private void Confirm()
-    {
-        if (form != null && form.IsValid)
-        {
-            MudDialog.Close(DialogResult.Ok((productionMultiplier, costMultiplier)));
-        }
+        MudDialog.Close(DialogResult.Ok((productionMultiplier, costMultiplier)));
     }
 }
-

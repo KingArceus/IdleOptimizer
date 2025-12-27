@@ -479,8 +479,16 @@
 
     private async Task OpenDeleteAllDialog()
     {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = "Delete All Items",
+            ["Message"] = "Are you sure you want to delete all generators and research items? This action cannot be undone.",
+            ["ConfirmButtonText"] = "Delete All",
+            ["ConfirmButtonColor"] = Color.Error,
+            ["ResultData"] = true
+        };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<DeleteAllConfirmationDialog>("Delete All Items", options);
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Delete All Items", parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled)

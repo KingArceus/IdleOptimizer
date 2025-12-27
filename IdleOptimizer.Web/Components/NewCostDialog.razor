@@ -1,5 +1,7 @@
 @using IdleOptimizer.Services
+@using IdleOptimizer.Components
 @using MudBlazor
+@inherits FormDialogBase
 
 <MudDialog>
     <TitleContent>
@@ -12,7 +14,7 @@
         <MudText Typo="Typo.body2" Class="mb-3">
             Please enter the cost after purchasing this generator:
         </MudText>
-        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+        <MudForm @ref="Form" @bind-IsValid="@Success" @bind-Errors="@Errors">
             <MudStack Row="true" Spacing="2">
                 <MudNumericField @bind-Value="@newCostValue" 
                                  Label="New Cost" 
@@ -27,42 +29,25 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="!success">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="!Success">
             Save
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Parameter] public double CurrentCost { get; set; }
     [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
-
-    private MudForm? form;
-    private bool success;
-    private string[] errors = { };
     
     private double newCostValue = 0;
     private string? newCostAbbr = null;
 
     private double EffectiveNewCost => NumberFormattingService.ApplyAbbreviation(newCostValue, newCostAbbr);
 
-    private async Task Save()
+    protected override async Task OnSaveAsync()
     {
-        if (form != null)
-        {
-            await form.Validate();
-            if (form.IsValid)
-            {
-                var effectiveCost = EffectiveNewCost;
-                MudDialog.Close(DialogResult.Ok(effectiveCost));
-            }
-        }
-    }
-
-    private void Cancel()
-    {
-        MudDialog.Cancel();
+        var effectiveCost = EffectiveNewCost;
+        MudDialog.Close(DialogResult.Ok(effectiveCost));
     }
 }

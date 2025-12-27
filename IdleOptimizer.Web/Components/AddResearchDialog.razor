@@ -1,14 +1,16 @@
 @using IdleOptimizer.Models
 @using IdleOptimizer.ViewModels
 @using IdleOptimizer.Services
+@using IdleOptimizer.Components
 @using MudBlazor
+@inherits FormDialogBase
 
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">Add New Research</MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+        <MudForm @ref="Form" @bind-IsValid="@Success" @bind-Errors="@Errors">
             <MudTextField ShrinkLabel @bind-Value="@viewModel.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
             <MudStack Spacing="2" Class="mt-2">
@@ -65,14 +67,13 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="!success">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="!Success">
             Save
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
@@ -81,9 +82,6 @@
     private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
     private HashSet<string> requiredResearch = new();
     private IEnumerable<string> RequiredResearchEnumerable => requiredResearch;
-    private MudForm? form;
-    private bool success;
-    private string[] errors = { };
 
     protected override void OnInitialized()
     {
@@ -124,27 +122,15 @@
         requiredResearch = values.ToHashSet();
     }
 
-    private async Task Save()
-    {
-        if (form != null)
-        {
-            await form.Validate();
-            if (form.IsValid)
-            {
-                viewModel.RequiredGenerators = requiredGenerators.ToList();
-                viewModel.RequiredResearch = requiredResearch.ToList();
-                
-                var research = viewModel.ToResearch(CalculationService, NumberFormattingService);
-                CalculationService.Research.Add(research);
+    protected override async Task OnSaveAsync()
+                    {
+        viewModel.RequiredGenerators = requiredGenerators.ToList();
+        viewModel.RequiredResearch = requiredResearch.ToList();
+        
+        var research = viewModel.ToResearch(CalculationService, NumberFormattingService);
+        CalculationService.Research.Add(research);
                 MudDialog.Close(DialogResult.Ok(true));
 
                 await CalculationService.SaveStateAsync();
-            }
-        }
-    }
-
-    private void Cancel()
-    {
-        MudDialog.Cancel();
     }
 }

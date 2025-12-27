@@ -1,0 +1,52 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrWhiteSpace(WarningMessage))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                @WarningMessage
+            </MudAlert>
+        }
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudText Typo="Typo.body1" Class="mb-3">
+                @Message
+            </MudText>
+        }
+        @if (AdditionalContent != null)
+        {
+            @AdditionalContent
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="@ConfirmButtonColor" Variant="Variant.Filled" OnClick="Confirm">
+            @ConfirmButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string? WarningMessage { get; set; }
+    [Parameter] public RenderFragment? AdditionalContent { get; set; }
+    [Parameter] public string ConfirmButtonText { get; set; } = "Confirm";
+    [Parameter] public Color ConfirmButtonColor { get; set; } = Color.Primary;
+    [Parameter] public object? ResultData { get; set; }
+
+    private void Confirm()
+    {
+        MudDialog.Close(DialogResult.Ok(ResultData ?? true));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

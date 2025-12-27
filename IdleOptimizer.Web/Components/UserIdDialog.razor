@@ -1,13 +1,15 @@
 @using IdleOptimizer.Services
+@using IdleOptimizer.Components
 @using MudBlazor
 @inject IDialogService DialogService
+@inherits FormDialogBase
 
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">Set User ID for Cloud Sync</MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+        <MudForm @ref="Form" @bind-IsValid="@Success" @bind-Errors="@Errors">
             <MudTextField @bind-Value="@userId" 
                          Label="User ID" 
                          Variant="Variant.Outlined" 
@@ -22,20 +24,16 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="@(!success || string.IsNullOrWhiteSpace(userId))">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="@(!Success || string.IsNullOrWhiteSpace(userId))">
             Save
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ILocalStorageService LocalStorageService { get; set; } = default!;
     [Parameter] public string? CurrentUserId { get; set; }
 
-    private MudForm? form;
-    private bool success;
-    private string[] errors = { };
     private string userId = string.Empty;
     private bool isCheckingUser = false;
 
@@ -63,10 +61,15 @@
                 // Show confirmation dialog
                 var parameters = new DialogParameters
                 {
-                    ["UserId"] = userIdToCheck
+                    ["Title"] = "User Already Exists",
+                    ["Message"] = $"A user with ID \"{userIdToCheck}\" already exists in the cloud. Overwriting will replace the existing user's data with your current local data.",
+                    ["WarningMessage"] = "This action cannot be undone.",
+                    ["ConfirmButtonText"] = "Overwrite User",
+                    ["ConfirmButtonColor"] = Color.Error,
+                    ["ResultData"] = true
                 };
                 var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-                var confirmDialog = await DialogService.ShowAsync<OverwriteUserDialog>("User Already Exists", parameters, options);
+                var confirmDialog = await DialogService.ShowAsync<ConfirmationDialog>("User Already Exists", parameters, options);
                 var result = await confirmDialog.Result;
                 
                 if (result.Canceled || result.Data is not bool overwrite || !overwrite)
@@ -84,40 +87,32 @@
         }
     }
 
-    private async Task Save()
+    protected override async Task OnSaveAsync()
     {
-        if (form != null)
+        if (string.IsNullOrWhiteSpace(userId))
         {
-            await form.Validate();
-            if (form.IsValid && !string.IsNullOrWhiteSpace(userId))
+            return;
+        }
+
+        var trimmedUserId = userId.Trim();
+        // If local storage has existing username, keep the current name changing logic
+        // (check for existing username on cloud and alert if overwriting)
+        if (!string.IsNullOrEmpty(CurrentUserId))
+        {
+            // Existing username in local storage - check for overwrite when changing
+            if (trimmedUserId != CurrentUserId)
             {
-                var trimmedUserId = userId.Trim();
-                // If local storage has existing username, keep the current name changing logic
-                // (check for existing username on cloud and alert if overwriting)
-                if (!string.IsNullOrEmpty(CurrentUserId))
+                var canProceed = await CheckAndConfirmUserExists(trimmedUserId);
+                if (!canProceed)
                 {
-                    // Existing username in local storage - check for overwrite when changing
-                    if (trimmedUserId != CurrentUserId)
-                    {
-                        var canProceed = await CheckAndConfirmUserExists(trimmedUserId);
-                        if (!canProceed)
-                        {
-                            // User cancelled or chose not to overwrite
-                            return;
-                        }
-                    }
+                    // User cancelled or chose not to overwrite
+                    return;
                 }
-                // If no existing username in local storage, just set it (Dashboard will load from cloud)
-                
-                await LocalStorageService.SetUserIdAsync(trimmedUserId);
-                MudDialog.Close(DialogResult.Ok(trimmedUserId));
             }
         }
-    }
-
-    private void Cancel()
-    {
-        MudDialog.Cancel();
+        // If no existing username in local storage, just set it (Dashboard will load from cloud)
+        
+        await LocalStorageService.SetUserIdAsync(trimmedUserId);
+        MudDialog.Close(DialogResult.Ok(trimmedUserId));
     }
 }
-

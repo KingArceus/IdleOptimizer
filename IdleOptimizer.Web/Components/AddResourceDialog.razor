@@ -1,13 +1,15 @@
 @using IdleOptimizer.Models
 @using IdleOptimizer.Services
+@using IdleOptimizer.Components
 @using MudBlazor
+@inherits FormDialogBase
 
 <MudDialog>
     <TitleContent>
         <MudText Typo="Typo.h6">Add New Resource</MudText>
     </TitleContent>
     <DialogContent>
-        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+        <MudForm @ref="Form" @bind-IsValid="@Success" @bind-Errors="@Errors">
             <MudTextField @bind-Value="@newResource.Name" Label="Resource Name" Variant="Variant.Outlined" Required="true" />
             
             <MudText Typo="Typo.body2" Class="mt-2" Style="color: #90caf9;">
@@ -17,52 +19,35 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save" Disabled="!success">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync" Disabled="!Success">
             Save
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
 
     private Resource newResource = new();
-    private MudForm? form;
-    private bool success;
-    private string[] errors = { };
 
-    private async Task Save()
+    protected override async Task OnSaveAsync()
     {
-        if (form != null)
+        if (string.IsNullOrWhiteSpace(newResource.Name))
         {
-            await form.Validate();
-            if (form.IsValid)
-            {
-                if (string.IsNullOrWhiteSpace(newResource.Name))
-                {
-                    return;
-                }
-
-                // Check if resource already exists
-                var existingResource = CalculationService.GetResource(newResource.Name);
-                if (existingResource != null)
-                {
-                    MudDialog.Cancel();
-                    return;
-                }
-
-                CalculationService.AddResource(newResource);
-                MudDialog.Close(DialogResult.Ok(true));
-
-                await CalculationService.SaveStateAsync();
-            }
+            return;
         }
-    }
 
-    private void Cancel()
-    {
-        MudDialog.Cancel();
+        // Check if resource already exists
+        var existingResource = CalculationService.GetResource(newResource.Name);
+        if (existingResource != null)
+        {
+            MudDialog.Cancel();
+            return;
+        }
+
+        CalculationService.AddResource(newResource);
+        MudDialog.Close(DialogResult.Ok(true));
+
+        await CalculationService.SaveStateAsync();
     }
 }
-

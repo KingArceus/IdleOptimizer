@@ -305,7 +305,7 @@ public class CalculationService(
                 _ = await _localStorage.LoadGeneratorsAsync();
                 _ = await _localStorage.LoadResearchAsync();
                 _ = await _localStorage.LoadResourcesAsync();
-
+                
                 // For now, use cloud data if available (can be enhanced with timestamp comparison)
 
                 Generators = cloudData.Generators;

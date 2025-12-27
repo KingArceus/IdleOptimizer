@@ -1,0 +1,40 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        @if (TitleContent != null)
+        {
+            @TitleContent
+        }
+        else if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <MudText Typo="Typo.h6">@Title</MudText>
+        }
+    </TitleContent>
+    <DialogContent>
+        @ChildContent
+    </DialogContent>
+    <DialogActions>
+        @if (Actions != null)
+        {
+            @Actions
+        }
+        else
+        {
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    protected void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
