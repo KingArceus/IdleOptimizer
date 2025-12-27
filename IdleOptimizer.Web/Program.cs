@@ -14,6 +14,9 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
 builder.Services.AddScoped<INumberFormattingService, NumberFormattingService>();
 builder.Services.AddScoped<IUpgradeTimerService, UpgradeTimerService>();
+builder.Services.AddScoped<IProductionService, ProductionService>();
+builder.Services.AddScoped<IValuationService, ValuationService>();
+builder.Services.AddScoped<IUpgradeEvaluationService, UpgradeEvaluationService>();
 builder.Services.AddScoped<ICalculationService, CalculationService>();
 
 await builder.Build().RunAsync();
