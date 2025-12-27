@@ -163,7 +163,7 @@
                                  Variant="Variant.Outlined"
                                  Dense="true"
                                  Style="flex: 1;" />
-                <AbbreviationSelect @bind-Value="@EditCostAbbr" />
+                <AbbreviationSelect @bind-Value="@EditState.EditCostAbbr" />
             </MudStack>
             
             <div class="text-caption mt-1">Formatted: @NumberFormattingService.FormatNumber(EditItem.Cost)</div>
@@ -258,11 +258,7 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Parameter] public INumberFormattingService NumberFormattingService { get; set; } = default!;
     [Parameter] public IUpgradeTimerService TimerService { get; set; } = default!;
-    [Parameter] public Dictionary<Generator, List<ResourceEntryViewModel>> EditResources { get; set; } = new();
-    [Parameter] public Dictionary<Generator, List<ResourceCostEntryViewModel>> EditCostResources { get; set; } = new();
-    [Parameter] public Dictionary<Research, List<ResourceCostEntryViewModel>> EditResearchCostResources { get; set; } = new();
-    [Parameter] public Dictionary<Generator, double> EditCostRatios { get; set; } = new();
-    [Parameter] public string? EditCostAbbr { get; set; }
+    [Parameter] public EditStateViewModel EditState { get; set; } = default!;
     [Parameter] public EventCallback<UpgradeResult> OnStartEdit { get; set; }
     [Parameter] public EventCallback<UpgradeResult> OnSaveEdit { get; set; }
     [Parameter] public EventCallback<UpgradeResult> OnCancelEdit { get; set; }
@@ -275,38 +271,38 @@
 
     private List<ResourceEntryViewModel> GetOrCreateEditResources(Generator generator)
     {
-        if (!EditResources.ContainsKey(generator))
+        if (!EditState.EditResources.ContainsKey(generator))
         {
-            EditResources[generator] = new List<ResourceEntryViewModel>();
+            EditState.EditResources[generator] = new List<ResourceEntryViewModel>();
         }
-        return EditResources[generator];
+        return EditState.EditResources[generator];
     }
 
     private List<ResourceCostEntryViewModel> GetOrCreateEditCostResources(Generator generator)
     {
-        if (!EditCostResources.ContainsKey(generator))
+        if (!EditState.EditCostResources.ContainsKey(generator))
         {
-            EditCostResources[generator] = new List<ResourceCostEntryViewModel>();
+            EditState.EditCostResources[generator] = new List<ResourceCostEntryViewModel>();
         }
-        return EditCostResources[generator];
+        return EditState.EditCostResources[generator];
     }
 
     private List<ResourceCostEntryViewModel> GetOrCreateEditCostResources(Research research)
     {
-        if (!EditResearchCostResources.ContainsKey(research))
+        if (!EditState.EditResearchCostResources.ContainsKey(research))
         {
-            EditResearchCostResources[research] = new List<ResourceCostEntryViewModel>();
+            EditState.EditResearchCostResources[research] = new List<ResourceCostEntryViewModel>();
         }
-        return EditResearchCostResources[research];
+        return EditState.EditResearchCostResources[research];
     }
 
     private double GetOrCreateEditCostRatio(Generator generator)
     {
-        if (!EditCostRatios.ContainsKey(generator))
+        if (!EditState.EditCostRatios.ContainsKey(generator))
         {
-            EditCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
+            EditState.EditCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
         }
-        return EditCostRatios[generator];
+        return EditState.EditCostRatios[generator];
     }
 
     private Color GetCascadeScoreColor(double cascadeScore)

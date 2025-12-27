@@ -25,11 +25,7 @@
                     CalculationService="@CalculationService"
                     NumberFormattingService="@NumberFormattingService"
                     TimerService="@TimerService"
-                    EditResources="@EditResources"
-                    EditCostResources="@EditCostResources"
-                    EditResearchCostResources="@EditResearchCostResources"
-                    EditCostRatios="@EditCostRatios"
-                    EditCostAbbr="@EditCostAbbr"
+                    EditState="@EditState"
                     OnStartEdit="@OnStartEdit"
                     OnSaveEdit="@OnSaveEdit"
                     OnCancelEdit="@OnCancelEdit"
@@ -69,12 +65,7 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Parameter] public INumberFormattingService NumberFormattingService { get; set; } = default!;
     [Parameter] public IUpgradeTimerService TimerService { get; set; } = default!;
-    [Parameter] public Dictionary<object, UpgradeResult> EditItems { get; set; } = new();
-    [Parameter] public Dictionary<Generator, List<ResourceEntryViewModel>> EditResources { get; set; } = new();
-    [Parameter] public Dictionary<Generator, List<ResourceCostEntryViewModel>> EditCostResources { get; set; } = new();
-    [Parameter] public Dictionary<Research, List<ResourceCostEntryViewModel>> EditResearchCostResources { get; set; } = new();
-    [Parameter] public Dictionary<Generator, double> EditCostRatios { get; set; } = new();
-    [Parameter] public string? EditCostAbbr { get; set; }
+    [Parameter] public EditStateViewModel EditState { get; set; } = default!;
     [Parameter] public EventCallback<UpgradeResult> OnStartEdit { get; set; }
     [Parameter] public EventCallback<UpgradeResult> OnSaveEdit { get; set; }
     [Parameter] public EventCallback<UpgradeResult> OnCancelEdit { get; set; }
@@ -93,13 +84,13 @@
 
     private bool IsEditing(UpgradeResult item)
     {
-        return item.SourceItem != null && EditItems.ContainsKey(item.SourceItem);
+        return EditState.IsEditing(item.SourceItem);
     }
 
     private UpgradeResult GetOrCreateEditItem(UpgradeResult item)
     {
         if (item.SourceItem == null) return item;
-        return EditItems.ContainsKey(item.SourceItem) ? EditItems[item.SourceItem] : item;
+        return EditState.EditItems.ContainsKey(item.SourceItem) ? EditState.EditItems[item.SourceItem] : item;
     }
 
     private async Task HandleFileUpload(InputFileChangeEventArgs e)

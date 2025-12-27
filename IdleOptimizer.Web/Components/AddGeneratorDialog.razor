@@ -9,14 +9,14 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
-            <MudTextField ShrinkLabel @bind-Value="@newGenerator.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            <MudTextField ShrinkLabel @bind-Value="@viewModel.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
-            <ResourceEntryEditor Entries="@resources" 
-                                 EntriesChanged="@((List<ResourceEntryViewModel> entries) => { resources = entries; })"
+            <ResourceEntryEditor Entries="@viewModel.Resources" 
+                                 EntriesChanged="@((List<ResourceEntryViewModel> entries) => { viewModel.Resources = entries; })"
                                  CalculationService="@CalculationService" 
                                  ItemIdPrefix="generator-resource" />
             
-            <MudNumericField ShrinkLabel @bind-Value="@newGenerator.Count" Label="Initial Count" 
+            <MudNumericField ShrinkLabel @bind-Value="@viewModel.Count" Label="Initial Count" 
                             Variant="Variant.Outlined" Required="true" Min="0" Class="mt-2" />
             
             <MudStack Spacing="2" Class="mt-2" Row="true">
@@ -38,8 +38,8 @@
                 </MudSelect>
             </MudStack>
             
-            <ResourceCostEntryEditor Entries="@resourceCosts" 
-                                    EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => { resourceCosts = entries; })"
+            <ResourceCostEntryEditor Entries="@viewModel.ResourceCosts" 
+                                    EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => { viewModel.ResourceCosts = entries; })"
                                     CalculationService="@CalculationService" 
                                     ItemIdPrefix="generator-cost" />
         </MudForm>
@@ -57,13 +57,11 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
-    private Generator newGenerator = new();
+    private GeneratorEditViewModel viewModel = new();
     private MudForm? form;
     private bool success;
     private string[] errors = { };
 
-    private List<ResourceEntryViewModel> resources = new();
-    private List<ResourceCostEntryViewModel> resourceCosts = new();
     private HashSet<string> requiredGenerators = new();
     private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
     private HashSet<string> requiredResearch = new();
@@ -73,8 +71,9 @@
     {
         base.OnInitialized();
         var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        resources.Add(new ResourceEntryViewModel { ResourceName = firstResourceName, Value = 0 });
-        resourceCosts.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
+        viewModel.Resources.Add(new ResourceEntryViewModel { ResourceName = firstResourceName, Value = 0 });
+        viewModel.ResourceCosts.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
+        viewModel.CostRatio = 1.15; // Default 15% increase
     }
 
     private void OnRequiredGeneratorsChanged(IEnumerable<string> values)
@@ -94,55 +93,11 @@
             await form.Validate();
             if (form.IsValid)
             {
-                // Handle resource costs
-                newGenerator.ResourceCosts = new Dictionary<string, double>();
-                foreach (var cost in resourceCosts)
-                {
-                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
-                    {
-                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
-                        newGenerator.ResourceCosts[cost.ResourceName] = costValue;
-                    }
-                }
-                newGenerator.Cost = newGenerator.ResourceCosts.Count > 0 
-                    ? newGenerator.ResourceCosts.Values.Sum() 
-                    : 0;
+                viewModel.RequiredGenerators = requiredGenerators.ToList();
+                viewModel.RequiredResearch = requiredResearch.ToList();
                 
-                // Handle resources for production
-                newGenerator.Resources = new Dictionary<string, double>();
-                foreach (var resource in resources)
-                {
-                    if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
-                    {
-                        double productionValue = NumberFormattingService.ApplyAbbreviation(resource.Value, resource.Abbr);
-                        newGenerator.Resources[resource.ResourceName] = productionValue;
-                    }
-                }
-                newGenerator.BaseProduction = newGenerator.Resources.Count > 0 
-                    ? newGenerator.Resources.Values.Sum() 
-                    : 0;
-                
-                // Initialize BaseResources as a copy of Resources
-                newGenerator.BaseResources = newGenerator.Resources.Count > 0
-                    ? new Dictionary<string, double>(newGenerator.Resources)
-                    : new Dictionary<string, double>();
-                
-                // Initialize BaseResourceCosts as a copy of ResourceCosts
-                newGenerator.BaseResourceCosts = newGenerator.ResourceCosts.Count > 0
-                    ? new Dictionary<string, double>(newGenerator.ResourceCosts)
-                    : new Dictionary<string, double>();
-                
-                // Set default CostRatio if not set
-                if (newGenerator.CostRatio == 0 && newGenerator.Cost > 0)
-                {
-                    newGenerator.CostRatio = 1.15; // Default 15% increase
-                }
-                
-                // Handle prerequisites
-                newGenerator.RequiredGenerators = requiredGenerators.ToList();
-                newGenerator.RequiredResearch = requiredResearch.ToList();
-                
-                CalculationService.Generators.Add(newGenerator);
+                var generator = viewModel.ToGenerator(NumberFormattingService);
+                CalculationService.Generators.Add(generator);
                 CalculationService.UpdateResourceTotalProduction();
                 MudDialog.Close(DialogResult.Ok(true));
 

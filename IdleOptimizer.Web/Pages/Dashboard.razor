@@ -30,12 +30,7 @@
                                   CalculationService="@CalculationService"
                                   NumberFormattingService="@NumberFormattingService"
                                   TimerService="@TimerService"
-                                  EditItems="@editItems"
-                                  EditResources="@editResources"
-                                  EditCostResources="@editCostResources"
-                                  EditResearchCostResources="@editResearchCostResources"
-                                  EditCostRatios="@editCostRatios"
-                                  EditCostAbbr="@editCostAbbr"
+                                  EditState="@editState"
                                   OnStartEdit="@StartEdit"
                                   OnSaveEdit="@SaveEdit"
                                   OnCancelEdit="@CancelEdit"
@@ -58,12 +53,7 @@
     [Inject] private IUpgradeTimerService TimerService { get; set; } = default!;
     
     private List<UpgradeResult> rankedUpgrades = new();
-    private Dictionary<object, UpgradeResult> editItems = new();
-    private string? editCostAbbr = null;
-    private Dictionary<Generator, List<ResourceEntryViewModel>> editResources = new();
-    private Dictionary<Generator, List<ResourceCostEntryViewModel>> editCostResources = new();
-    private Dictionary<Research, List<ResourceCostEntryViewModel>> editResearchCostResources = new();
-    private Dictionary<Generator, double> editCostRatios = new();
+    private EditStateViewModel editState = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -91,33 +81,7 @@
         rankedUpgrades = CalculationService.GetRankedUpgrades();
         // Clear edit items for items that no longer exist
         var currentSourceItems = rankedUpgrades.Select(r => r.SourceItem).Where(s => s != null).ToList();
-        var keysToRemove = editItems.Keys.Where(k => !currentSourceItems.Contains(k)).ToList();
-        foreach (var key in keysToRemove)
-        {
-            editItems.Remove(key);
-            if (key is Generator generator)
-            {
-                if (editResources.ContainsKey(generator))
-                {
-                    editResources.Remove(generator);
-                }
-                if (editCostResources.ContainsKey(generator))
-                {
-                    editCostResources.Remove(generator);
-                }
-                if (editCostRatios.ContainsKey(generator))
-                {
-                    editCostRatios.Remove(generator);
-                }
-            }
-            else if (key is Research research)
-            {
-                if (editResearchCostResources.ContainsKey(research))
-                {
-                    editResearchCostResources.Remove(research);
-                }
-            }
-        }
+        editState.RemoveStaleItems(currentSourceItems);
         // Clear timer cache to force recalculation
         TimerService.ClearCache();
         StateHasChanged();
@@ -125,16 +89,16 @@
 
     private bool IsEditing(UpgradeResult item)
     {
-        return item.SourceItem != null && editItems.ContainsKey(item.SourceItem);
+        return editState.IsEditing(item.SourceItem);
     }
 
     private void StartEdit(UpgradeResult item)
     {
         if (item.SourceItem == null) return;
 
-        if (!editItems.ContainsKey(item.SourceItem))
+        if (!editState.EditItems.ContainsKey(item.SourceItem))
         {
-            editItems[item.SourceItem] = new UpgradeResult
+            editState.EditItems[item.SourceItem] = new UpgradeResult
             {
                 ItemName = item.ItemName,
                 Type = item.Type,
@@ -150,7 +114,7 @@
             // Initialize resource entries for generators
             if (item.SourceItem is Generator generator)
             {
-                if (!editResources.ContainsKey(generator))
+                if (!editState.EditResources.ContainsKey(generator))
                 {
                     var resourceEntries = new List<ResourceEntryViewModel>();
                     if (generator.Resources != null && generator.Resources.Count > 0)
@@ -168,11 +132,11 @@
                             });
                         }
                     }
-                    editResources[generator] = resourceEntries;
+                    editState.EditResources[generator] = resourceEntries;
                 }
 
                 // Initialize resource cost entries for generators
-                if (!editCostResources.ContainsKey(generator))
+                if (!editState.EditCostResources.ContainsKey(generator))
                 {
                     var costEntries = new List<ResourceCostEntryViewModel>();
                     if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
@@ -190,19 +154,19 @@
                             });
                         }
                     }
-                    editCostResources[generator] = costEntries;
+                    editState.EditCostResources[generator] = costEntries;
                 }
 
                 // Initialize CostRatio for generators
-                if (!editCostRatios.ContainsKey(generator))
+                if (!editState.EditCostRatios.ContainsKey(generator))
                 {
-                    editCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
+                    editState.EditCostRatios[generator] = generator.CostRatio > 0 ? generator.CostRatio : 1.15;
                 }
             }
             else if (item.SourceItem is Research research)
             {
                 // Initialize resource cost entries for research
-                if (!editResearchCostResources.ContainsKey(research))
+                if (!editState.EditResearchCostResources.ContainsKey(research))
                 {
                     var costEntries = new List<ResourceCostEntryViewModel>();
                     if (research.ResourceCosts != null && research.ResourceCosts.Count > 0)
@@ -220,7 +184,7 @@
                             });
                         }
                     }
-                    editResearchCostResources[research] = costEntries;
+                    editState.EditResearchCostResources[research] = costEntries;
                 }
             }
         }
@@ -231,30 +195,30 @@
     {
         if (item.SourceItem == null) return item;
 
-        return editItems[item.SourceItem];
+        return editState.EditItems[item.SourceItem];
     }
 
     private void HandleEditResourcesChanged((Generator generator, List<ResourceEntryViewModel> entries) args)
     {
-        editResources[args.generator] = args.entries;
+        editState.EditResources[args.generator] = args.entries;
         StateHasChanged();
     }
 
     private void HandleEditCostResourcesChanged((Generator generator, List<ResourceCostEntryViewModel> entries) args)
     {
-        editCostResources[args.generator] = args.entries;
+        editState.EditCostResources[args.generator] = args.entries;
         StateHasChanged();
     }
 
     private void HandleEditResearchCostResourcesChanged((Research research, List<ResourceCostEntryViewModel> entries) args)
     {
-        editResearchCostResources[args.research] = args.entries;
+        editState.EditResearchCostResources[args.research] = args.entries;
         StateHasChanged();
     }
 
     private void HandleEditCostRatioChanged((Generator generator, double ratio) args)
     {
-        editCostRatios[args.generator] = args.ratio;
+        editState.EditCostRatios[args.generator] = args.ratio;
         StateHasChanged();
     }
 
@@ -300,9 +264,9 @@
 
     private async Task SaveEdit(UpgradeResult item)
     {
-        if (item.SourceItem == null || !editItems.ContainsKey(item.SourceItem)) return;
+        if (item.SourceItem == null || !editState.EditItems.ContainsKey(item.SourceItem)) return;
 
-        var editItem = editItems[item.SourceItem];
+        var editItem = editState.EditItems[item.SourceItem];
 
         if (item.SourceItem is Generator generator)
         {
@@ -310,10 +274,10 @@
             generator.Count = editItem.Count;
 
             // Handle resource costs
-            if (editCostResources.ContainsKey(generator) && editCostResources[generator].Count > 0)
+            if (editState.EditCostResources.ContainsKey(generator) && editState.EditCostResources[generator].Count > 0)
             {
                 generator.ResourceCosts = new Dictionary<string, double>();
-                foreach (var cost in editCostResources[generator])
+                foreach (var cost in editState.EditCostResources[generator])
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
@@ -332,10 +296,10 @@
             }
 
             // Handle resources for production
-            if (editResources.ContainsKey(generator) && editResources[generator].Count > 0)
+            if (editState.EditResources.ContainsKey(generator) && editState.EditResources[generator].Count > 0)
             {
                 generator.Resources = new Dictionary<string, double>();
-                foreach (var resource in editResources[generator])
+                foreach (var resource in editState.EditResources[generator])
                 {
                     if (!string.IsNullOrWhiteSpace(resource.ResourceName) && resource.Value > 0)
                     {
@@ -354,9 +318,9 @@
             }
 
             // Handle CostRatio
-            if (editCostRatios.ContainsKey(generator))
+            if (editState.EditCostRatios.ContainsKey(generator))
             {
-                generator.CostRatio = editCostRatios[generator];
+                generator.CostRatio = editState.EditCostRatios[generator];
             }
 
             // Initialize BaseResources if not set
@@ -384,21 +348,16 @@
                     generator.BaseResourceCosts = new Dictionary<string, double>();
                 }
             }
-
-            // Remove from edit resources, cost resources, and cost ratios
-            editResources.Remove(generator);
-            editCostResources.Remove(generator);
-            editCostRatios.Remove(generator);
         }
         else if (item.SourceItem is Research research)
         {
             research.Name = editItem.ItemName;
 
             // Handle resource costs
-            if (editResearchCostResources.ContainsKey(research) && editResearchCostResources[research].Count > 0)
+            if (editState.EditResearchCostResources.ContainsKey(research) && editState.EditResearchCostResources[research].Count > 0)
             {
                 research.ResourceCosts = new Dictionary<string, double>();
-                foreach (var cost in editResearchCostResources[research])
+                foreach (var cost in editState.EditResearchCostResources[research])
                 {
                     if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
                     {
@@ -415,13 +374,10 @@
                 research.ResourceCosts.Clear();
                 research.Cost = 0;
             }
-
-            // Remove from edit research cost resources
-            editResearchCostResources.Remove(research);
         }
 
         // Exit edit mode for this row
-        editItems.Remove(item.SourceItem);
+        editState.ClearEditState(item.SourceItem);
 
         CalculationService.UpdateResourceTotalProduction();
         RefreshRankings();
@@ -434,32 +390,7 @@
     {
         if (item.SourceItem != null)
         {
-            if (editItems.ContainsKey(item.SourceItem))
-            {
-                editItems.Remove(item.SourceItem);
-            }
-            if (item.SourceItem is Generator generator)
-            {
-                if (editResources.ContainsKey(generator))
-                {
-                    editResources.Remove(generator);
-                }
-                if (editCostResources.ContainsKey(generator))
-                {
-                    editCostResources.Remove(generator);
-                }
-                if (editCostRatios.ContainsKey(generator))
-                {
-                    editCostRatios.Remove(generator);
-                }
-            }
-            else if (item.SourceItem is Research research)
-            {
-                if (editResearchCostResources.ContainsKey(research))
-                {
-                    editResearchCostResources.Remove(research);
-                }
-            }
+            editState.ClearEditState(item.SourceItem);
         }
         RefreshRankings();
     }

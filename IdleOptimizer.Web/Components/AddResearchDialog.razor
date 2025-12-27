@@ -9,13 +9,13 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
-            <MudTextField ShrinkLabel @bind-Value="@newResearch.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
+            <MudTextField ShrinkLabel @bind-Value="@viewModel.Name" Label="Name" Variant="Variant.Outlined" Required="true" />
             
             <MudStack Spacing="2" Class="mt-2">
-                @for (int index = 0; index < targetMultipliers.Count; index++)
+                @for (int index = 0; index < viewModel.TargetMultipliers.Count; index++)
                 {
-                    var target = targetMultipliers[index];
-                    var isLast = index == targetMultipliers.Count - 1;
+                    var target = viewModel.TargetMultipliers[index];
+                    var isLast = index == viewModel.TargetMultipliers.Count - 1;
                     <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                         <MudSelect ShrinkLabel T="string" @bind-Value="@target.GeneratorName" Label="Generator" FullWidth=true
                                    Variant="Variant.Outlined" Style="flex: 1;" Id="@($"target-generator-{index}")">
@@ -56,8 +56,8 @@
                 </MudSelect>
             </MudStack>
 
-            <ResourceCostEntryEditor Entries="@resourceCosts" 
-                                    EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => { resourceCosts = entries; })"
+            <ResourceCostEntryEditor Entries="@viewModel.ResourceCosts" 
+                                    EntriesChanged="@((List<ResourceCostEntryViewModel> entries) => { viewModel.ResourceCosts = entries; })"
                                     CalculationService="@CalculationService" 
                                     ItemIdPrefix="research-cost"
                                     ShowSelectResourceOption="false" />
@@ -76,7 +76,7 @@
     [Parameter] public ICalculationService CalculationService { get; set; } = default!;
     [Inject] private INumberFormattingService NumberFormattingService { get; set; } = default!;
 
-    private Research newResearch = new();
+    private ResearchEditViewModel viewModel = new();
     private HashSet<string> requiredGenerators = new();
     private IEnumerable<string> RequiredGeneratorsEnumerable => requiredGenerators;
     private HashSet<string> requiredResearch = new();
@@ -85,40 +85,31 @@
     private bool success;
     private string[] errors = { };
 
-    private class TargetMultiplierEntry
-    {
-        public string? GeneratorName { get; set; }
-        public double MultiplierValue { get; set; } = 1.0;
-    }
-
-    private List<ResourceCostEntryViewModel> resourceCosts = new();
-    private List<TargetMultiplierEntry> targetMultipliers = new();
-
     protected override void OnInitialized()
     {
         base.OnInitialized();
         var firstResourceName = CalculationService.Resources.FirstOrDefault()?.Name;
-        resourceCosts.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
+        viewModel.ResourceCosts.Add(new ResourceCostEntryViewModel { ResourceName = firstResourceName, Value = 0 });
         
         // Initialize with one target multiplier entry - default to "All" if generators exist
         var defaultGenerator = CalculationService.Generators.Any() ? "All" : null;
-        targetMultipliers.Add(new TargetMultiplierEntry { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
+        viewModel.TargetMultipliers.Add(new TargetMultiplierViewModel { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
     }
 
     private void AddTargetMultiplier()
     {
         // Default to "All" if generators exist, otherwise null
         var defaultGenerator = CalculationService.Generators.Any() ? "All" : null;
-        targetMultipliers.Add(new TargetMultiplierEntry { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
+        viewModel.TargetMultipliers.Add(new TargetMultiplierViewModel { GeneratorName = defaultGenerator, MultiplierValue = 1.0 });
         StateHasChanged();
     }
 
-    private void RemoveTargetMultiplier(TargetMultiplierEntry target)
+    private void RemoveTargetMultiplier(TargetMultiplierViewModel target)
     {
         // Prevent removing the last item to ensure there's always at least one entry
-        if (targetMultipliers.Count > 1)
+        if (viewModel.TargetMultipliers.Count > 1)
         {
-            targetMultipliers.Remove(target);
+            viewModel.TargetMultipliers.Remove(target);
             StateHasChanged();
         }
     }
@@ -140,66 +131,11 @@
             await form.Validate();
             if (form.IsValid)
             {
-                // Handle resource costs
-                newResearch.ResourceCosts = new Dictionary<string, double>();
-                foreach (var cost in resourceCosts)
-                {
-                    if (!string.IsNullOrWhiteSpace(cost.ResourceName) && cost.Value > 0)
-                    {
-                        double costValue = NumberFormattingService.ApplyAbbreviation(cost.Value, cost.Abbr);
-                        newResearch.ResourceCosts[cost.ResourceName] = costValue;
-                    }
-                }
-                newResearch.Cost = newResearch.ResourceCosts.Count > 0 
-                    ? newResearch.ResourceCosts.Values.Sum() 
-                    : 0;
+                viewModel.RequiredGenerators = requiredGenerators.ToList();
+                viewModel.RequiredResearch = requiredResearch.ToList();
                 
-                // Handle target generators and multipliers
-                newResearch.TargetGenerators = new List<string>();
-                newResearch.TargetMultipliers = new Dictionary<string, double>();
-                
-                foreach (var target in targetMultipliers)
-                {
-                    if (string.IsNullOrWhiteSpace(target.GeneratorName) || target.MultiplierValue <= 0)
-                        continue;
-                    
-                    if (target.GeneratorName == "None")
-                    {
-                        // If "None" is selected, add "None" to TargetGenerators
-                        if (!newResearch.TargetGenerators.Contains("None"))
-                        {
-                            newResearch.TargetGenerators.Add("None");
-                        }
-                        newResearch.TargetMultipliers["None"] = target.MultiplierValue;
-                    }
-                    else if (target.GeneratorName == "All")
-                    {
-                        // If "All" is selected, include all generators with the same multiplier
-                        foreach (var generator in CalculationService.Generators)
-                        {
-                            if (!newResearch.TargetGenerators.Contains(generator.Name))
-                            {
-                                newResearch.TargetGenerators.Add(generator.Name);
-                            }
-                            newResearch.TargetMultipliers[generator.Name] = target.MultiplierValue;
-                        }
-                    }
-                    else
-                    {
-                        // Add specific generator
-                        if (!newResearch.TargetGenerators.Contains(target.GeneratorName))
-                        {
-                            newResearch.TargetGenerators.Add(target.GeneratorName);
-                        }
-                        newResearch.TargetMultipliers[target.GeneratorName] = target.MultiplierValue;
-                    }
-                }
-
-                // Handle prerequisites
-                newResearch.RequiredGenerators = requiredGenerators.ToList();
-                newResearch.RequiredResearch = requiredResearch.ToList();
-
-                CalculationService.Research.Add(newResearch);
+                var research = viewModel.ToResearch(CalculationService, NumberFormattingService);
+                CalculationService.Research.Add(research);
                 MudDialog.Close(DialogResult.Ok(true));
 
                 await CalculationService.SaveStateAsync();
