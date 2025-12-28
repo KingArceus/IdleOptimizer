@@ -137,6 +137,24 @@ public class CalculationService(
             }
         }
         
+        // Apply global multiplier to ensure smallest score is above 1
+        if (results.Count > 0)
+        {
+            double minScore = results.Min(r => r.CascadeScore);
+            
+            // If minimum score is below 1, calculate multiplier to bring it to 1
+            if (minScore > 0 && minScore < 1.0)
+            {
+                double globalMultiplier = 1.0 / minScore;
+                
+                // Apply multiplier to all scores
+                foreach (var result in results)
+                {
+                    result.CascadeScore *= globalMultiplier;
+                }
+            }
+        }
+        
         // Sort by CascadeScore descending
         return [.. results.OrderByDescending(r => r.CascadeScore)];
     }

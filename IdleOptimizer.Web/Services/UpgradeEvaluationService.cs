@@ -109,17 +109,16 @@ public class UpgradeEvaluationService(
     }
 
     /// <summary>
-    /// Calculates cascade score using the new multi-resource formula:
-    /// 1 + (Total Future Time Saved / Baseline) + 0.5 × (Bottleneck Shifts Caused)
-    /// Multiplied by payback bonus for investment efficiency
+    /// Calculates cascade multiplier representing how much this upgrade accelerates future upgrades.
+    /// Formula: 1 + (Total Future Time Saved / Baseline) + (Dynamic Weight × Bottleneck Shifts)
+    /// Returns a multiplier (1-10x) to be applied to base efficiency (gain/cost).
     /// </summary>
     public double CalculateCascadeScore(
         UpgradeResult upgrade,
         List<Generator> generators,
         List<Research> research,
         Dictionary<string, double> currentProductionByResource,
-        Dictionary<string, double> newProductionByResource,
-        double timeToPayback)
+        Dictionary<string, double> newProductionByResource)
     {
         // Get all unpurchased upgrades first (needed for baseline calculation)
         var futureUpgrades = new List<(Dictionary<string, double>? ResourceCosts, double Cost, object SourceItem)>();
@@ -140,18 +139,11 @@ public class UpgradeEvaluationService(
             }
         }
         
-        // Calculate context-aware baseline from all future upgrades
-        var validTimeToAffordValues = new List<double>();
+        // Calculate baseline as sum of wait times for future upgrades (excluding this one)
+        // This represents the total time we'll spend waiting for future upgrades
+        double baseline = 0;
+        int futureUpgradeCount = 0;
         
-        // Add current upgrade's TimeToAfford if valid
-        if (upgrade.TimeToAfford > 0 && 
-            !double.IsInfinity(upgrade.TimeToAfford) && 
-            upgrade.TimeToAfford != double.MaxValue)
-        {
-            validTimeToAffordValues.Add(upgrade.TimeToAfford);
-        }
-
-        // Calculate TimeToAfford for all other future upgrades to establish context
         foreach (var (resourceCosts, _, sourceItem) in futureUpgrades)
         {
             // Skip the upgrade we're currently evaluating
@@ -166,30 +158,16 @@ public class UpgradeEvaluationService(
                     !double.IsInfinity(timeToAfford) && 
                     timeToAfford != double.MaxValue)
                 {
-                    validTimeToAffordValues.Add(timeToAfford);
+                    baseline += timeToAfford;
+                    futureUpgradeCount++;
                 }
             }
         }
-
-        // Determine baseline using median for robustness against outliers
-        double baseline;
-        if (validTimeToAffordValues.Count == 0)
+        
+        // Fallback: if no valid future upgrades, use a default baseline
+        if (baseline == 0 || futureUpgradeCount == 0)
         {
-            // Fallback: estimate from production
-            double totalProduction = currentProductionByResource.Values.Sum();
-            baseline = totalProduction > 0 ? 1.0 : 1.0;
-        }
-        else if (validTimeToAffordValues.Count == 1)
-        {
-            // Only one valid value (the current upgrade)
-            baseline = validTimeToAffordValues[0];
-        }
-        else
-        {
-            // Use median for robustness
-            validTimeToAffordValues.Sort();
-            int medianIndex = validTimeToAffordValues.Count / 2;
-            baseline = validTimeToAffordValues[medianIndex];
+            baseline = 1.0;
         }
         
         // Calculate Total Future Time Saved and Bottleneck Shifts
@@ -278,34 +256,10 @@ public class UpgradeEvaluationService(
         // Calculate cascade multiplier: 1 + (Total Future Time Saved / Baseline) + (Dynamic Weight × Bottleneck Shifts)
         double cascadeMultiplier = 1.0 + (totalFutureTimeSaved / baseline) + (bottleneckShiftWeight * bottleneckShifts);
         
-        // Calculate payback bonus: upgrades with faster payback get priority boost
-        double paybackBonus = 1.0;
-        if (timeToPayback > 0 && 
-            !double.IsInfinity(timeToPayback) && 
-            timeToPayback != double.MaxValue &&
-            baseline > 0)
-        {
-            double paybackRatio = timeToPayback / baseline;
-            
-            // Logarithmic scaling: shorter payback = higher bonus
-            paybackBonus = 1.0 + (1.0 / Math.Max(1, Math.Log10(1 + paybackRatio)));
-        }
+        // Cap cascade multiplier to prevent extreme distortions (max 10x from cascade effects alone)
+        cascadeMultiplier = Math.Min(cascadeMultiplier, 10.0);
         
-        // Penalize upgrades that take longer than baseline to afford
-        double timeToAffordPenalty = 1.0;
-        if (upgrade.TimeToAfford > 0 && 
-            !double.IsInfinity(upgrade.TimeToAfford) && 
-            upgrade.TimeToAfford != double.MaxValue &&
-            baseline > 0)
-        {
-            double timeRatio = upgrade.TimeToAfford / baseline;
-            
-            // Use square root to prevent too aggressive penalization
-            timeToAffordPenalty = 1.0 / Math.Sqrt(timeRatio);
-        }
-        
-        double finalCascadeScore = cascadeMultiplier * paybackBonus * timeToAffordPenalty;
-        return finalCascadeScore;
+        return cascadeMultiplier;
     }
 
     public UpgradeResult EvaluateGeneratorPurchase(
@@ -399,12 +353,13 @@ public class UpgradeEvaluationService(
             secondsToAdd = double.MaxValue;
         }
 
+        // Calculate effective cost (will be used for both payback and efficiency)
+        double effectiveCost = CalculateEffectiveCost(generator.ResourceCosts ?? [], resourceValues);
+        
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
         double timeToPayback = double.MaxValue;
         if (effectiveGain > 0)
         {
-            // Use effective cost for payback calculation
-            double effectiveCost = CalculateEffectiveCost(generator.ResourceCosts ?? [], resourceValues);
             if (effectiveCost > 0)
             {
                 timeToPayback = effectiveCost / effectiveGain;
@@ -419,7 +374,7 @@ public class UpgradeEvaluationService(
                 : double.MaxValue;
         }
         
-        // Calculate cascade score using resource dictionaries
+        // Calculate cascade multiplier using resource dictionaries
         var upgradeResult = new UpgradeResult 
         { 
             Cost = cost, 
@@ -429,14 +384,19 @@ public class UpgradeEvaluationService(
                 : null,
             TimeToAfford = timeToAfford
         };
-        double cascadeScore = CalculateCascadeScore(
+        double cascadeMultiplier = CalculateCascadeScore(
             upgradeResult,
             allGenerators,
             [], // Research list not needed for generator evaluation
             currentProductionByResource,
-            newProductionByResource,
-            timeToPayback
+            newProductionByResource
         );
+        
+        // Calculate efficiency (gain per unit of cost)
+        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
+        
+        // Final priority score = efficiency × cascade multiplier
+        double cascadeScore = efficiency * cascadeMultiplier;
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -594,12 +554,13 @@ public class UpgradeEvaluationService(
             secondsToAdd = double.MaxValue;
         }
 
+        // Calculate effective cost (will be used for both payback and efficiency)
+        double effectiveCost = CalculateEffectiveCost(research.ResourceCosts ?? [], resourceValues);
+        
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
         double timeToPayback = double.MaxValue;
         if (effectiveGain > 0)
         {
-            // Use effective cost for payback calculation
-            double effectiveCost = CalculateEffectiveCost(research.ResourceCosts ?? [], resourceValues);
             if (effectiveCost > 0)
             {
                 timeToPayback = effectiveCost / effectiveGain;
@@ -614,7 +575,7 @@ public class UpgradeEvaluationService(
                 : double.MaxValue;
         }
         
-        // Calculate cascade score using resource dictionaries
+        // Calculate cascade multiplier using resource dictionaries
         var upgradeResult = new UpgradeResult 
         { 
             Cost = totalCost, 
@@ -624,14 +585,19 @@ public class UpgradeEvaluationService(
                 : null,
             TimeToAfford = timeToAfford
         };
-        double cascadeScore = CalculateCascadeScore(
+        double cascadeMultiplier = CalculateCascadeScore(
             upgradeResult,
             allGenerators,
             allResearch,
             currentProductionByResource,
-            newProductionByResource,
-            timeToPayback
+            newProductionByResource
         );
+        
+        // Calculate efficiency (gain per unit of cost)
+        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
+        
+        // Final priority score = efficiency × cascade multiplier
+        double cascadeScore = efficiency * cascadeMultiplier;
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
