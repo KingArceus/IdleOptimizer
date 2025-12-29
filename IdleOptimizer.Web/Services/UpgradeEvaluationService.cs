@@ -125,7 +125,7 @@ public class UpgradeEvaluationService(
         
         foreach (var generator in generators)
         {
-            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0 && generator.IsUnlocked)
             {
                 futureUpgrades.Add((generator.ResourceCosts, generator.GetPurchaseCost(), generator));
             }
@@ -133,7 +133,7 @@ public class UpgradeEvaluationService(
         
         foreach (var researchItem in research)
         {
-            if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0)
+            if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0 && !researchItem.IsApplied && researchItem.IsUnlocked)
             {
                 futureUpgrades.Add((researchItem.ResourceCosts, researchItem.GetTotalCost(), researchItem));
             }
