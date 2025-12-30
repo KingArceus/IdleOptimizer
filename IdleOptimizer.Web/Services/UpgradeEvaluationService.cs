@@ -441,9 +441,7 @@ public class UpgradeEvaluationService(
         }
         else
         {
-            // Use inverse formula: 1.0 / (totalTime + epsilon) where epsilon prevents division by zero
-            const double epsilon = 1.0;
-            priorityScore = 1.0 / (totalTime + epsilon);
+            priorityScore = 1.0 / Math.Log10(totalTime);
         }
 
         // Keep other calculations for display purposes
@@ -468,7 +466,7 @@ public class UpgradeEvaluationService(
         }
         
         // Use priorityScore as the CascadeScore (reusing the property name for backward compatibility)
-        double cascadeScore = priorityScore / Math.Sqrt(timeToAfford);
+        double cascadeScore = priorityScore / Math.Log10(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -658,9 +656,7 @@ public class UpgradeEvaluationService(
         }
         else
         {
-            // Use inverse formula: 1.0 / (totalTime + epsilon) where epsilon prevents division by zero
-            const double epsilon = 1.0;
-            priorityScore = 1.0 / (totalTime + epsilon);
+            priorityScore = 1.0 / Math.Log10(totalTime);
         }
 
         // Keep other calculations for display purposes
@@ -685,7 +681,7 @@ public class UpgradeEvaluationService(
         }
         
         // Use priorityScore as the CascadeScore (reusing the property name for backward compatibility)
-        double cascadeScore = priorityScore / Math.Sqrt(timeToAfford);
+        double cascadeScore = priorityScore / Math.Log10(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
