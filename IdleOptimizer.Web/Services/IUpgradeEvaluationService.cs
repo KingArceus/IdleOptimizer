@@ -7,6 +7,7 @@ public interface IUpgradeEvaluationService
     UpgradeResult EvaluateGeneratorPurchase(
         Generator generator,
         List<Generator> allGenerators,
+		List<Research> allResearch,
         Dictionary<string, double> resourceValues,
         Dictionary<string, double> bottleneckWeights,
         Dictionary<string, double> currentProductionByResource);

@@ -139,17 +139,13 @@ public class UpgradeEvaluationService(
             }
         }
         
-        // Calculate baseline as sum of wait times for future upgrades (excluding this one)
+        // Calculate baseline as sum of wait times for future upgrades
         // This represents the total time we'll spend waiting for future upgrades
         double baseline = 0;
         int futureUpgradeCount = 0;
         
         foreach (var (resourceCosts, _, sourceItem) in futureUpgrades)
         {
-            // Skip the upgrade we're currently evaluating
-            if (sourceItem == upgrade.SourceItem)
-                continue;
-            
             // Only calculate for upgrades with resource costs
             if (resourceCosts != null && resourceCosts.Count > 0)
             {
@@ -159,6 +155,9 @@ public class UpgradeEvaluationService(
                     timeToAfford != double.MaxValue)
                 {
                     baseline += timeToAfford;
+					if (sourceItem == upgrade.SourceItem)
+						continue;
+				
                     futureUpgradeCount++;
                 }
             }
@@ -254,10 +253,10 @@ public class UpgradeEvaluationService(
         }
         
         // Calculate cascade multiplier: 1 + (Total Future Time Saved / Baseline) + (Dynamic Weight × Bottleneck Shifts)
-        double cascadeMultiplier = 1.0 + (totalFutureTimeSaved / baseline) + (bottleneckShiftWeight * bottleneckShifts);
+        double cascadeMultiplier = 1.0 + (totalFutureTimeSaved/ baseline) + (bottleneckShiftWeight * bottleneckShifts);
         
         // Cap cascade multiplier to prevent extreme distortions (max 10x from cascade effects alone)
-        cascadeMultiplier = Math.Min(cascadeMultiplier, 10.0);
+        // cascadeMultiplier = Math.Min(cascadeMultiplier, 10.0);
         
         return cascadeMultiplier;
     }
@@ -265,6 +264,7 @@ public class UpgradeEvaluationService(
     public UpgradeResult EvaluateGeneratorPurchase(
         Generator generator,
         List<Generator> allGenerators,
+		List<Research> allResearch,
         Dictionary<string, double> resourceValues,
         Dictionary<string, double> bottleneckWeights,
         Dictionary<string, double> currentProductionByResource)
@@ -387,7 +387,7 @@ public class UpgradeEvaluationService(
         double cascadeMultiplier = CalculateCascadeScore(
             upgradeResult,
             allGenerators,
-            [], // Research list not needed for generator evaluation
+            allResearch, // Research list not needed for generator evaluation
             currentProductionByResource,
             newProductionByResource
         );
@@ -396,7 +396,7 @@ public class UpgradeEvaluationService(
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency * cascadeMultiplier;
+        double cascadeScore = efficiency / Math.Sqrt(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -597,7 +597,7 @@ public class UpgradeEvaluationService(
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency * cascadeMultiplier;
+        double cascadeScore = efficiency / Math.Sqrt(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -608,10 +608,10 @@ public class UpgradeEvaluationService(
         {
             availableAt = null; // Can't afford
         }
-        else if (secondsToAdd == double.MaxValue)
-        {
-            availableAt = null; // Can't afford
-        }
+        // else if (secondsToAdd == double.MaxValue)
+        // {
+        //     availableAt = null; // Can't afford
+        // }
         else if (secondsToAdd > maxSafeSeconds)
         {
             availableAt = DateTime.Now.AddSeconds(maxSafeSeconds);

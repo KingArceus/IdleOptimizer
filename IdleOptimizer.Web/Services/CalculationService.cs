@@ -123,7 +123,7 @@ public class CalculationService(
             if (generator.IsUnlocked)
             {
                 results.Add(_upgradeEvaluationService.EvaluateGeneratorPurchase(
-                    generator, Generators, resourceValues, bottleneckWeights, productionByResource));
+                    generator, Generators, Research, resourceValues, bottleneckWeights, productionByResource));
             }
         }
         
