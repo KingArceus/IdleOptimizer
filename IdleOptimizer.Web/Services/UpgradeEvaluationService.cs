@@ -34,7 +34,7 @@ public class UpgradeEvaluationService(
                 resourceValue = 1e10;
             }
             
-            effectiveGain += increaseAmount * resourceValue * bottleneckWeight;
+            effectiveGain += increaseAmount * resourceValue;
         }
         
         return effectiveGain;
