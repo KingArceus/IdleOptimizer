@@ -396,7 +396,7 @@ public class UpgradeEvaluationService(
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency / Math.Sqrt(timeToAfford);
+        double cascadeScore = efficiency * cascadeMultiplier / Math.Sqrt(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -597,7 +597,7 @@ public class UpgradeEvaluationService(
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency / Math.Sqrt(timeToAfford);
+        double cascadeScore = efficiency * cascadeMultiplier / Math.Sqrt(timeToAfford);
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
