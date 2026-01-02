@@ -214,18 +214,18 @@ public class ValuationService : IValuationService
         }
         
         // Apply exponential smoothing if previous weights exist
-        if (previousWeights != null && previousWeights.Count > 0)
-        {
-            var smoothedWeights = new Dictionary<string, double>();
-            foreach (var resource in productionByResource.Keys)
-            {
-                double newWeight = weights.ContainsKey(resource) ? weights[resource] : 1.0;
-                double previousWeight = previousWeights.ContainsKey(resource) ? previousWeights[resource] : 1.0;
-                double smoothedWeight = 0.4 * newWeight + 0.6 * previousWeight;
-                smoothedWeights[resource] = smoothedWeight;
-            }
-            weights = smoothedWeights;
-        }
+        // if (previousWeights != null && previousWeights.Count > 0)
+        // {
+        //     var smoothedWeights = new Dictionary<string, double>();
+        //     foreach (var resource in productionByResource.Keys)
+        //     {
+        //         double newWeight = weights.ContainsKey(resource) ? weights[resource] : 1.0;
+        //         double previousWeight = previousWeights.ContainsKey(resource) ? previousWeights[resource] : 1.0;
+        //         double smoothedWeight = 0.4 * newWeight + 0.6 * previousWeight;
+        //         smoothedWeights[resource] = smoothedWeight;
+        //     }
+        //     weights = smoothedWeights;
+        // }
         
         return weights;
     }
