@@ -65,7 +65,6 @@ public class ValuationService : IValuationService
             if (production > 0)
             {
                 resourceValues[resource] = demand / production;
-                Console.WriteLine($"Resource: {resource}, Value: {resourceValues[resource]}");
             }
             else
             {
