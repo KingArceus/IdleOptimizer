@@ -58,6 +58,12 @@ public class CalculationService(
         return _productionService.GetTotalProductionByResourceName(Generators, resourceName);
     }
 
+    public Dictionary<string, double> GetResourceValues()
+    {
+        var productionByResource = GetTotalProductionByResource();
+        return _valuationService.CalculateResourceValuations(Generators, Research, productionByResource);
+    }
+
     public void UpdateResourceTotalProduction()
     {
         var productionByResource = GetTotalProductionByResource();

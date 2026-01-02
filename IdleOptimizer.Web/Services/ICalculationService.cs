@@ -14,6 +14,7 @@ public interface ICalculationService
     double GetTotalProduction();
     Dictionary<string, double> GetTotalProductionByResource();
     double GetTotalProductionByResourceName(string resourceName);
+    Dictionary<string, double> GetResourceValues();
     void UpdateResourceTotalProduction();
     Resource? GetResource(string name);
     void AddResource(Resource resource);

@@ -17,6 +17,13 @@
                 }
                 <MudText Typo="Typo.body1">@NumberFormattingService.FormatNumber(resourceProduction, 2)</MudText>
             </MudTd>
+            <MudTd DataLabel="Weight" Align="Align.Right">
+                @{
+                    var resourceValues = CalculationService.GetResourceValues();
+                    var weight = resourceValues.ContainsKey(context.Name) ? resourceValues[context.Name] : 0;
+                }
+                <MudText Typo="Typo.body1">@NumberFormattingService.FormatNumber(weight, 2)</MudText>
+            </MudTd>
             <MudTd DataLabel="Actions">
                 <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" 
                          StartIcon="@Icons.Material.Filled.Delete" 
