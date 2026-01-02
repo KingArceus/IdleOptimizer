@@ -394,9 +394,9 @@ public class UpgradeEvaluationService(
         
         // Calculate efficiency (gain per unit of cost)
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
-        Console.WriteLine($"Generator: {generator.Name}, Effective Gain: {effectiveGain}, Effective Cost: {effectiveCost}, Efficiency: {efficiency}, Cascade Multiplier: {cascadeMultiplier}");
+        
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency * cascadeMultiplier;
+        double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
         
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
@@ -597,8 +597,8 @@ public class UpgradeEvaluationService(
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
-        double cascadeScore = efficiency * cascadeMultiplier;
-        Console.WriteLine($"Research: {research.Name}, Effective Gain: {effectiveGain}, Effective Cost: {effectiveCost}, Efficiency: {efficiency}, Cascade Multiplier: {cascadeMultiplier}");
+        double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
+        
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
         const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
