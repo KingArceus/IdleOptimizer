@@ -21,7 +21,7 @@ public class ValuationService : IValuationService
         // Sum costs from all generators
         foreach (var generator in generators)
         {
-            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0)
+            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0 && generator.IsUnlocked)
             {
                 foreach (var cost in generator.ResourceCosts)
                 {
@@ -40,7 +40,7 @@ public class ValuationService : IValuationService
         // Sum costs from all research
         foreach (var researchItem in research)
         {
-            if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0)
+            if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0 && researchItem.IsUnlocked && !researchItem.IsApplied)
             {
                 foreach (var cost in researchItem.ResourceCosts)
                 {
