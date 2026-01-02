@@ -63,7 +63,7 @@ public class UpgradeEvaluationService(
                 resourceValue = 1e10;
             }
             
-            effectiveCost += cost.Value * resourceValue;
+            effectiveCost += cost.Value;
         }
         
         return effectiveCost;
