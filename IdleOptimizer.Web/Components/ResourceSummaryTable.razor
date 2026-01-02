@@ -6,6 +6,12 @@
 {
     <MudTable Items="@CalculationService.Resources" Hover="true" Dense="true" Striped="true" Bordered="true" 
               Elevation="1" Class="mt-2 mb-4">
+        <HeaderContent>
+            <MudTh>Resource Name</MudTh>
+            <MudTh Align="Align.Right">Total Production</MudTh>
+            <MudTh Align="Align.Right">Weight</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
         <RowTemplate>
             <MudTd DataLabel="Resource Name">
                 <strong>@context.Name</strong>
