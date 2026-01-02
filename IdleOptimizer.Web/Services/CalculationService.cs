@@ -140,8 +140,12 @@ public class CalculationService(
         // Apply global multiplier to ensure smallest score is above 1
         if (results.Count > 0)
         {
-            double minScore = results.Min(r => r.CascadeScore);
-            
+            double minScore = results
+                .Where(r => r.CascadeScore > 0)
+                .Select(r => r.CascadeScore)
+                .DefaultIfEmpty(0)
+                .Min();
+
             // If minimum score is below 1, calculate multiplier to bring it to 1
             if (minScore > 0 && minScore < 1.0)
             {
