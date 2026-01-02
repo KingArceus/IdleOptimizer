@@ -331,7 +331,7 @@ public class UpgradeEvaluationService(
         
         // Calculate effective production gain using resource values and bottleneck weights
         double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
-        Console.WriteLine($"Generator: {generator.Name}, Effective Gain: {effectiveGain}");
+        
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
@@ -394,7 +394,7 @@ public class UpgradeEvaluationService(
         
         // Calculate efficiency (gain per unit of cost)
         double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
-        
+        Console.WriteLine($"Generator: {generator.Name}, Effective Gain: {effectiveGain}, Effective Cost: {effectiveCost}, Efficiency: {efficiency}, Cascade Multiplier: {cascadeMultiplier}");
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier;
         
@@ -531,7 +531,7 @@ public class UpgradeEvaluationService(
         
         // Calculate effective production gain using resource values and bottleneck weights
         double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
-        Console.WriteLine($"Research: {research.Name}, Effective Gain: {effectiveGain}");
+        
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
@@ -598,7 +598,7 @@ public class UpgradeEvaluationService(
         
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier;
-        
+        Console.WriteLine($"Research: {research.Name}, Effective Gain: {effectiveGain}, Effective Cost: {effectiveCost}, Efficiency: {efficiency}, Cascade Multiplier: {cascadeMultiplier}");
         // Clamp to a safe maximum value (approximately 100 years in seconds)
         // But don't clamp if it's actually MaxValue (can't afford)
         const double maxSafeSeconds = 100.0 * 365.25 * 24 * 60 * 60; // ~3,155,760,000 seconds
