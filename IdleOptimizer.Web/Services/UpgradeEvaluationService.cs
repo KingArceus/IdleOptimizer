@@ -331,7 +331,7 @@ public class UpgradeEvaluationService(
         
         // Calculate effective production gain using resource values and bottleneck weights
         double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
-        
+        Console.WriteLine($"Generator: {generator.Name}, Effective Gain: {effectiveGain}");
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
@@ -531,7 +531,7 @@ public class UpgradeEvaluationService(
         
         // Calculate effective production gain using resource values and bottleneck weights
         double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
-        
+        Console.WriteLine($"Research: {research.Name}, Effective Gain: {effectiveGain}");
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
             ? newProductionByResource.Values.First() 
