@@ -18,10 +18,10 @@ public class ValuationService : IValuationService
         // Calculate total demand per resource across all unpurchased upgrades
         var demandByResource = new Dictionary<string, double>();
         
-        // Sum costs from all generators
+        // Sum costs from all unpurchased generators
         foreach (var generator in generators)
         {
-            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0 && generator.IsUnlocked)
+            if (generator.ResourceCosts != null && generator.ResourceCosts.Count > 0 && generator.IsUnlocked && generator.Count == 0)
             {
                 foreach (var cost in generator.ResourceCosts)
                 {
@@ -37,7 +37,7 @@ public class ValuationService : IValuationService
             }
         }
         
-        // Sum costs from all research
+        // Sum costs from all unapplied research
         foreach (var researchItem in research)
         {
             if (researchItem.ResourceCosts != null && researchItem.ResourceCosts.Count > 0 && researchItem.IsUnlocked && !researchItem.IsApplied)
