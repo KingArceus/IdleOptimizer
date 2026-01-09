@@ -34,7 +34,7 @@ public class UpgradeEvaluationService(
                 resourceValue = 1e10;
             }
             
-            effectiveGain += increaseAmount * resourceValue;
+            effectiveGain += increaseAmount / resourceValue;
         }
         
         return effectiveGain;
@@ -63,7 +63,7 @@ public class UpgradeEvaluationService(
                 resourceValue = 1e10;
             }
             
-            effectiveCost += cost.Value * resourceValue;
+            effectiveCost += cost.Value / resourceValue;
         }
         
         return effectiveCost;
@@ -330,7 +330,7 @@ public class UpgradeEvaluationService(
         }
         
         // Calculate effective production gain using resource values and bottleneck weights
-        double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
+        double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, currentProductionByResource, bottleneckWeights);
         
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
@@ -354,7 +354,7 @@ public class UpgradeEvaluationService(
         }
 
         // Calculate effective cost (will be used for both payback and efficiency)
-        double effectiveCost = CalculateEffectiveCost(generator.ResourceCosts ?? [], resourceValues);
+        double effectiveCost = CalculateEffectiveCost(generator.ResourceCosts ?? [], currentProductionByResource);
         
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
         double timeToPayback = double.MaxValue;
@@ -393,7 +393,7 @@ public class UpgradeEvaluationService(
         );
         
         // Calculate efficiency (gain per unit of cost)
-        double efficiency = effectiveCost > 0 ? effectiveGain / timeToAfford : 0;
+        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
@@ -530,7 +530,7 @@ public class UpgradeEvaluationService(
         }
         
         // Calculate effective production gain using resource values and bottleneck weights
-        double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, resourceValues, bottleneckWeights);
+        double effectiveGain = CalculateEffectiveProductionGain(productionIncrease, currentProductionByResource, bottleneckWeights);
         
         // For total calculation, use the same logic as GetTotalProduction
         double newTotal = newProductionByResource.Count == 1 
@@ -555,7 +555,7 @@ public class UpgradeEvaluationService(
         }
 
         // Calculate effective cost (will be used for both payback and efficiency)
-        double effectiveCost = CalculateEffectiveCost(research.ResourceCosts ?? [], resourceValues);
+        double effectiveCost = CalculateEffectiveCost(research.ResourceCosts ?? [], currentProductionByResource);
         
         // Calculate time to payback (using effective gain if available, otherwise simple gain)
         double timeToPayback = double.MaxValue;
@@ -594,7 +594,7 @@ public class UpgradeEvaluationService(
         );
         
         // Calculate efficiency (gain per unit of cost)
-        double efficiency = effectiveCost > 0 ? effectiveGain / timeToAfford : 0;
+        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
         
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
