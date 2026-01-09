@@ -28,10 +28,10 @@ public class UpgradeEvaluationService(
             double bottleneckWeight = bottleneckWeights.ContainsKey(resource) ? bottleneckWeights[resource] : 1.0;
             
             // Handle infinite resource values (no production)
-            if (double.IsInfinity(resourceValue))
+            if (double.IsInfinity(resourceValue) || resourceValue == 0)
             {
                 // If resource has infinite value but we're producing it, use a large finite value
-                resourceValue = 1e10;
+                resourceValue = 1;
             }
             
             effectiveGain += increaseAmount / resourceValue;
@@ -58,11 +58,11 @@ public class UpgradeEvaluationService(
             double resourceValue = resourceValues.ContainsKey(cost.Key) ? resourceValues[cost.Key] : 0;
             
             // Handle infinite resource values
-            if (double.IsInfinity(resourceValue))
+            if (double.IsInfinity(resourceValue) || resourceValue == 0)
             {
-                resourceValue = 1e10;
+                resourceValue = 1;
             }
-            
+
             effectiveCost += cost.Value / resourceValue;
         }
         
