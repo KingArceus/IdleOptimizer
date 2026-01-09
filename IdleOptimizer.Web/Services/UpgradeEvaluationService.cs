@@ -393,7 +393,7 @@ public class UpgradeEvaluationService(
         );
         
         // Calculate efficiency (gain per unit of cost)
-        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
+        double efficiency = effectiveCost > 0 ? effectiveGain / timeToAfford : 0;
         
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
@@ -594,7 +594,7 @@ public class UpgradeEvaluationService(
         );
         
         // Calculate efficiency (gain per unit of cost)
-        double efficiency = effectiveCost > 0 ? effectiveGain / effectiveCost : 0;
+        double efficiency = effectiveCost > 0 ? effectiveGain / timeToAfford : 0;
         
         // Final priority score = efficiency × cascade multiplier
         double cascadeScore = efficiency * cascadeMultiplier / timeToAfford;
